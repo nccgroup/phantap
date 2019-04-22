@@ -5,7 +5,18 @@ As we require some non default kernel settings, you must rebuild OpenWrt from sc
 **Note** Your username and computer name used for building will be visible on the device.
 ################################################################################
 Once OpenWrt is built and installed, you just need to configure
-phantap bridge. Assuming eth0 and eth1 are not used:
+phantap bridge.
+
+* Get the interface names from the device
+
+```
+ip a
+```
+
+* If the interfaces are part of a bridge already, remove them from the bridge
+* Add the interfaces to the phantap bridge via the following commands in the cli
+(assuming eth0 and eth1 are used):
+
 ```
 uci set network.phantap.ifname='eth0 eth1'
 uci commit network
