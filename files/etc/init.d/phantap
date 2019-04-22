@@ -31,7 +31,9 @@ set $np.gateway='169.254.66.101'
 set $np.dns='8.8.4.4 8.8.8.8'
 set $np.ipv6='0'
 EOF
-echo "You need to add interfaces to phantap bridge, for exemple (assuming eth0 and eth1 are not used)"
+echo "Get the interface names from the device"
+echo "If the interfaces are part of a bridge already, remove them from the bridge"
+echo "Add the interfaces to the phantap bridge, for example (assuming eth0 and eth1 are used)"
 echo "uci set network.phantap.ifname='eth0 eth1'"
 echo "uci commit network"
 echo "/etc/init.d/network reload"
