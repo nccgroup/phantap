@@ -40,11 +40,11 @@ define Package/phantap/install
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/iface
 	$(INSTALL_DATA) ./files/etc/hotplug.d/iface/00-phantap $(1)/etc/hotplug.d/iface/00-phantap
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/net
-	$(INSTALL_BIN) ./files/etc/hotplug.d/net/00-phantap $(1)/etc/hotplug.d/net/00-phantap
+	$(INSTALL_DATA) ./files/etc/hotplug.d/net/00-phantap $(1)/etc/hotplug.d/net/00-phantap
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/etc/init.d/phantap $(1)/etc/init.d/phantap
 	$(INSTALL_DIR) $(1)/etc/sysctl.d
-	$(INSTALL_BIN) ./files/etc/sysctl.d/12-phantap.conf $(1)/etc/sysctl.d/12-phantap.conf
+	$(INSTALL_DATA) ./files/etc/sysctl.d/12-phantap.conf $(1)/etc/sysctl.d/12-phantap.conf
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./files/usr/bin/phantap $(1)/usr/bin/phantap
 endef
