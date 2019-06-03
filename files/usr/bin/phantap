@@ -63,6 +63,30 @@ uci commit firewall
 # Add mac for the fake gateway, we now have network access (except this local lan)
 ip neigh replace $gw_fakeip lladdr $gw_mac dev $BRIDGE
 
+while true; do
+    # uses tcpdump to grab dns traffic
+    echo "Listening to traffic ..."
+    packet=$(tcpdump -i $BRIDGE -nn -e -c 1 -Q in dst port 53)
+    # packet="19:00:37.474673 64:4b:f0:10:9c:9e > 00:0c:29:cc:a4:57, IPv4, length 75: 10.141.108.88.56925 > 10.138.128.10.53: UDP, length 33"
+    dns=$(echo $packet | sed -E 's/^[^ ]+ [0-9a-f:]{17} > [0-9a-f:]{17}.*+: .* > (\d+\.\d+\.\d+\.\d+)\.\d+.*/mysedworked \1 \2/')
+    # dns="mysedworked 10.138.128.10"
+    set -- $dns
+    if [ "$1" != "mysedworked" ]; then
+        echo "Unable to parse captured packet \"$packet\", retrying"
+        sleep 1
+        continue
+    fi
+    dns_ip=$2
+    echo "We got a dns server! dns_ip=$2"
+    break
+done
+
+uci batch <<EOF
+set network.phantap.dns=$dns_ip
+EOF
+uci commit network
+reload_config
+
 # Disables services
 /etc/init.d/sysntpd stop
 
