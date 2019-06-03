@@ -63,6 +63,9 @@ uci commit firewall
 # Add mac for the fake gateway, we now have network access (except this local lan)
 ip neigh replace $gw_fakeip lladdr $gw_mac dev $BRIDGE
 
+# Disables services
+/etc/init.d/sysntpd stop
+
 echo "setup done, you now have access to internet"
 
 # restart openvpn
