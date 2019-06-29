@@ -1,0 +1,5 @@
+BRIDGE=br-phantap
+
+if [ "$ACTION" = ifup -a "$DEVICE" == "$BRIDGE" ]; then
+    /etc/init.d/phantap-learn start
+fi
