@@ -82,14 +82,7 @@ while true; do
     break
 done
 
-uci batch <<EOF
-set network.phantap.dns=$dns_ip
-EOF
-uci commit network
-reload_config
-
-# Disables services
-/etc/init.d/sysntpd stop
+echo "nameserver $dns_ip" > /tmp/resolv.conf
 
 echo "setup done, you now have access to internet"
 
