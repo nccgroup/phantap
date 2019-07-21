@@ -1,7 +1,5 @@
 This is the OpenWrt feed for phantap
 
-As we require some non default kernel settings, you must rebuild OpenWrt from scratch to use it
-
 **Note** Your username and computer name used for building will be visible on the device.
 ################################################################################
 Once OpenWrt is built and installed, you just need to configure

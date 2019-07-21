@@ -22,7 +22,13 @@ define Package/phantap
   CATEGORY:=Utilities
   TITLE:=PhanTap
   PKGARCH:=all
-  DEPENDS:=+ebtables +tcpdump +ip-full +luci-ssl +luci-app-openvpn +openvpn-mbedtls +kmod-br-netfilter +kmod-ebtables-ipv4 +@KERNEL_BRIDGE_EBT_SNAT
+  DEPENDS:=+ebtables +tcpdump +ip-full +kmod-br-netfilter +kmod-ebtables-ipv4
+endef
+
+define Package/phantap/description
+  PhanTap or Phantom tap is a small set of scripts that allow you to setup a network tap
+  that automatically impersonnate a victim device, allowing you to access internet using
+  the IP & MAC of the victim. To speak to machines in the same L2, see PhanTap learn
 endef
 
 define Package/phantap-learn-arp
@@ -33,6 +39,10 @@ define Package/phantap-learn-arp
   DEPENDS:=+tcpdump +ip-full
 endef
 
+define Package/phantap-learn-arp/description
+  PhanTap learn arp is now replaced by PhanTap learn, C version that also support broadcast / multicast IPv4
+endef
+
 define Package/phantap-learn
   SECTION:=utils
   CATEGORY:=Utilities
@@ -40,8 +50,8 @@ define Package/phantap-learn
   DEPENDS:=+libpcap +ip-full
 endef
 
-define Package/phantap/description
-  PhanTap
+define Package/phantap-learn/description
+  PhanTap learn
 endef
 
 define Build/Prepare
