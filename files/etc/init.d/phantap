@@ -20,6 +20,9 @@ start_service()
 
 setup() {
 
+uci set system.ntp.enabled=0
+uci set system.ntp.server=''
+
 np=network.phantap
 uci batch <<EOF
 set $np=interface
