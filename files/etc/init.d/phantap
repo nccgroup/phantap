@@ -1,12 +1,16 @@
 #!/bin/sh /etc/rc.common
 
-START=95
+START=01
 USE_PROCD=1
 EXTRA_COMMANDS="setup"
 
 boot()
 {
     uci get network.phantap &>/dev/null || setup
+    # prevent leaks
+    ebtables -t filter -N phantap-drop -P RETURN
+    ebtables -t filter -A phantap-drop -j DROP
+    ebtables -t filter -A OUTPUT --logical-out br-phantap -j phantap-drop
 }
 
 start_service()
@@ -31,7 +35,8 @@ set $np.proto='static'
 set $np.ipaddr='169.254.66.100'
 set $np.netmask='255.255.255.254'
 set $np.gateway='169.254.66.101'
-set $np.dns='8.8.4.4 8.8.8.8'
+set $np.dns=''
+set $np.ifname=''
 set $np.ipv6='0'
 EOF
 echo "Get the interface names from the device"
@@ -49,6 +54,13 @@ set $fp.input='DROP'
 set $fp.output='ACCEPT'
 set $fp.forward='ACCEPT'
 set $fp.network='phantap'
+EOF
+
+fp=firewall.phantapi
+uci batch <<EOF
+set $fp=include
+set $fp.path='/tmp/phantap.firewall'
+set $fp.reload=1
 EOF
 
 dp=dhcp.phantap

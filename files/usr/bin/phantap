@@ -34,35 +34,37 @@ br_mac=$(cat /sys/class/net/$BRIDGE/address)
 network_get_ipaddr br_ip $INTF
 network_get_gateway gw_fakeip $INTF true
 
-# Flush neighbour table
-# As ARP and IPv6 are disabled this blocks outgoing traffic on $BRIDGE
-ip neigh flush dev $BRIDGE
+# Integrate with OpenWRT firewall
+cat > /tmp/phantap.firewall.$$ <<EOF
+# block local output on br-phantap
+ebtables -t filter -A phantap-drop -j DROP
 
-# Create a chain so we can cleanup
-ebtables -t nat -N phantap -P RETURN 2>/dev/null && ebtables -t nat -A POSTROUTING -j phantap
+ebtables -t nat -N phantap-snat -P RETURN 2>/dev/null \
+&& ebtables -t nat -I POSTROUTING -j phantap-snat
+iptables -t nat -N phantap-snat 2>/dev/null
+iptables -t nat -C POSTROUTING -o br-phantap -j phantap-snat \
+|| iptables -t nat -I POSTROUTING -o br-phantap -j phantap-snat
 
 # Cleanup old rules if exist
-ebtables -t nat -F phantap
+ebtables -t nat -F phantap-snat
+iptables -t nat -F phantap-snat
 # Replace our local mac with the victim mac
-ebtables -t nat -A phantap -s $br_mac -o $BRIDGE -j snat --to-source $victim_mac
+ebtables -t nat -A phantap-snat -s $br_mac -o $BRIDGE -j snat --to-source $victim_mac
+# Replace our local ip with the victim ip
+iptables -t nat -A phantap-snat -s $br_ip -j SNAT --to-source $victim_ip
 
-# Integrate with OpenWrt so firewall reloads don't break our rule
-fp=firewall.phantapr
-uci batch <<EOF
-set $fp=redirect
-set $fp.enabled='1'
-set $fp.target='SNAT'
-set $fp.dest='phantap'
-set $fp.proto='all'
-set $fp.name='phantap'
-set $fp.src_dip=$victim_ip
-set $fp.src_ip=$br_ip
-EOF
-uci commit firewall
-/etc/init.d/firewall reload
-
-# Add mac for the fake gateway, we now have network access (except this local lan)
+# Add mac for the fake gateway
 ip neigh replace $gw_fakeip lladdr $gw_mac dev $BRIDGE
+
+# allow local output on br-phantap again, we now have internet access
+ebtables -t filter -F phantap-drop
+
+echo "PhanTap firewall rules reloaded, you now have internet"
+EOF
+mv /tmp/phantap.firewall.$$ /tmp/phantap.firewall
+
+ebtables -t filter -A phantap-drop -j DROP
+/etc/init.d/firewall reload
 
 while true; do
     # uses tcpdump to grab dns traffic
