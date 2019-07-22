@@ -46,8 +46,12 @@ unsigned int debug = 0;
 
 #define OPT_ARGS "i:v:"
 
-// Filter Ethernet IPv4 ARP packets (we never know), IPv4 broadcast, and a subset of IPv4 mulitcast (we only want low traffic)
-#define BPFFILTER "(arp[0:2] = 0x0001 and arp[2:2] = 0x0800) or (ether broadcast and ether proto \\ip) or (ip dst net 224.0.0.0/8)"
+// Filter Ethernet IPv4 ARP packets (we never know), IPv4 broadcast,
+// and a subset of IPv4 mulitcast (we only want local & low traffic multicast)
+#define BPFFILTER "(arp[0:2] = 0x0001 and arp[2:2] = 0x0800)\
+                     or (ether broadcast and ether proto \\ip)\
+                     or (ip dst net 224.0.0.0/24)\
+                     or (ip dst net 239.255.255.0/24)"
 
 // This allow us to filter route/neigh when displaying / flushing
 #define PHANTAP_RTPROTO "255"
