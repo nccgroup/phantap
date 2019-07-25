@@ -7,7 +7,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=phantap
-PKG_VERSION:=2019.05.30
+PKG_VERSION:=2019.07.24
 PKG_RELEASE:=1
 
 PKG_MAINTAINER:=Diana Dragusin <diana.dragusin@nccgroup.com>, \
