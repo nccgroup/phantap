@@ -1,5 +1,6 @@
 #!/bin/sh
 
+. /lib/functions.sh
 . /lib/functions/network.sh
 
 INTF=phantap
@@ -66,6 +67,14 @@ mv /tmp/phantap.firewall.$$ /tmp/phantap.firewall
 ebtables -t filter -A phantap-drop -j DROP
 /etc/init.d/firewall reload
 
+handle_onconfig() {
+    /bin/sh -c "$1" || echo "'$1' failed"
+}
+
+config_load phantap
+# Run all commands in onnetconfig list
+config_list_foreach main onnetconfig handle_onconfig
+
 while true; do
     # uses tcpdump to grab dns traffic
     echo "Listening to traffic for dns config ..."
@@ -86,6 +95,8 @@ done
 
 echo "nameserver $dns_ip" > /tmp/resolv.conf
 
+# Run all commands in ondnsconfig list
+config_list_foreach main ondnsconfig handle_onconfig
+
 echo "setup done, you now have access to internet"
 
-# restart openvpn

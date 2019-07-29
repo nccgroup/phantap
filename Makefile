@@ -25,6 +25,10 @@ define Package/phantap
   DEPENDS:=+ebtables +tcpdump +ip-full +kmod-br-netfilter +kmod-ebtables-ipv4
 endef
 
+define Package/phantap/conffiles
+/etc/config/phantap
+endef
+
 define Package/phantap/description
   PhanTap or Phantom tap is a small set of scripts that allow you to setup a network tap
   that automatically impersonnate a victim device, allowing you to access internet using
@@ -48,6 +52,8 @@ define Build/Prepare
 endef
 
 define Package/phantap/install
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_DATA) ./files/etc/config/phantap $(1)/etc/config/phantap
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/iface
 	$(INSTALL_DATA) ./files/etc/hotplug.d/iface/00-phantap $(1)/etc/hotplug.d/iface/00-phantap
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/net

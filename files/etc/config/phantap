@@ -1,0 +1,5 @@
+
+config phantap 'main'
+	#list onnetconfig '/etc/init.d/openvpn restart'
+	#list ondnsconfig '/etc/init.d/myservice restart'
+
