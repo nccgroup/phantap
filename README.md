@@ -2,10 +2,10 @@
 
 ![PhanTap Logo](/img/phantap.png)
 
-PhanTap is an OpenWrt package used as a silent network tap and it does not affect the victim’s traffic, even in networks having NAC (Network Access Control 802.1X - 2004).
+PhanTap is an ‘invisible’ network tap aimed at red teams. With limited physical access to a target building, this tap can be installed inline between a network device and the corporate network. PhanTap is silent in the network and does not affect the victim’s traffic, even in networks having NAC (Network Access Control 802.1X - 2004).
 PhanTap will analyze traffic on the network and mask its traffic as the victim device.
 It can mount a tunnel back to a remote server, giving the user a foothold in the network for further analysis and pivoting.
-The physical device used for our testing is currently a small, inexpensive router, the GL.iNet GL-AR150.
+PhanTap is an OpenWrt package and should be compatible with any device. The physical device used for our testing is currently a small, inexpensive router, the [GL.iNet GL-AR150](https://www.gl-inet.com/products/gl-ar150/).
 
 
 ## Features:
@@ -24,7 +24,8 @@ The physical device used for our testing is currently a small, inexpensive route
 
 ## Setup
 
-(This assumes phantap packages are already part of the OpenWrt packages feed)
+PhanTap has been tested with the GL.iNet GL-AR150. This device has two separate network interfaces in OpenWrt (eth0, eth1).
+If your device is using an internal switch(swconfig based) with interfaces like eth0.1, eth0.2, some special traffic might be blocked, e.g. 802.1Q(tagged vlan), but PhanTap should work.
 
 * Install PhanTap package:
 ```
@@ -55,7 +56,7 @@ uci commit network
 
 * Phantap is now configured, as soon as you plug it between a victim and their switch, it will automatically configure the router and give it Internet access.
 
-* You can add your favorite VPN to have a remote connection back.
+* You can add your favorite VPN to have a remote connection back. We've tested PhanTap with [OpenVpn](https://openvpn.net/community-resources/how-to/), port TCP 443, to avoid some detection mehods.
 * You can also look at disabling the wifi by default and using hardware buttons to start it (https://openwrt.org/docs/guide-user/hardware/hardware.button).
 
 ## Limitations or how it can be detected :
