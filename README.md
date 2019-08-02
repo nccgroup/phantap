@@ -56,7 +56,7 @@ uci commit network
 
 * Phantap is now configured, as soon as you plug it between a victim and their switch, it will automatically configure the router and give it Internet access.
 
-* You can add your favorite VPN to have a remote connection back. We've tested PhanTap with [OpenVpn](https://openvpn.net/community-resources/how-to/), port TCP 443, to avoid some detection mehods.
+* You can add your favorite VPN to have a remote connection back. We've tested PhanTap with [OpenVpn](https://openvpn.net/community-resources/how-to/), port TCP 443, to avoid some detection methods.
 * You can also add a command to be ran when a new IP or DNS is configured, in /etc/config/phantap, e.g. /etc/init.d/openvpn restart (restart OpenVpn service).
 * You can also look at disabling the wifi by default and using hardware buttons to start it (https://openwrt.org/docs/guide-user/hardware/hardware.button).
 
