@@ -78,10 +78,10 @@ config_list_foreach main onnetconfig handle_onconfig
 while true; do
     # uses tcpdump to grab dns traffic
     echo "Listening to traffic for dns config ..."
-    packet=$(tcpdump -i $BRIDGE -nn -e -c 1 -Q in -q 'ether proto 0x0800 and dst port 53')
-    # packet="19:00:37.474673 64:4b:f0:10:9c:9e > 00:0c:29:cc:a4:57, IPv4, length 75: 10.141.108.88.56925 > 10.138.128.10.53: UDP, length 33"
-    dns=$(echo $packet | sed -E 's/^[^ ]+ [0-9a-f:]{17} > [0-9a-f:]{17}.*+: .* > (\d+\.\d+\.\d+\.\d+)\.\d+.*/mysedworked \1 \2/')
-    # dns="mysedworked 10.138.128.10"
+    packet=$(tcpdump -i $BRIDGE -nn -e -c 1 -Q in -q 'ether proto 0x0800 and src port 53')
+    # packet="23:37:55.861667 66:77:88:99:aa:bb > 00:11:22:33:44, IPv4, length 98: 8.8.8.8.53 > 10.1.2.3.59101: UDP, length 56"
+    dns=$(echo $packet | sed -E 's/^[^ ]+ [0-9a-f:]{17} > [0-9a-f:]{17}.*+: (\d+\.\d+\.\d+\.\d+)\.\d+ > .*/mysedworked \1 \2/')
+    # dns="mysedworked 8.8.8.8"
     set -- $dns
     if [ "$1" != "mysedworked" ]; then
         echo "Unable to parse captured packet \"$packet\", retrying"
