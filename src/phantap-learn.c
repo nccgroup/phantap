@@ -43,8 +43,8 @@ static void usage(void)
     fprintf(stderr, "  -i <listen-interface>\tthe interface to listen on\n");
     fprintf(stderr, "  -v <debug-level>\tprint some debug info (level > 0)\n");
     fprintf(stderr, "\nTo show/flush neigh/route\n"
-                    "ip neigh show proto " PHANTAP_RTPROTO "\n"
-                    "ip neigh flush nud permanent proto " PHANTAP_RTPROTO "\n"
+                    "ip neigh show nud permanent\n"
+                    "ip neigh flush nud permanent\n"
                     "ip route show proto " PHANTAP_RTPROTO "\n"
                     "ip route flush proto " PHANTAP_RTPROTO "\n");
 }
@@ -57,8 +57,7 @@ static void add_neighboor(const struct ether_addr *mac, const struct in_addr *ip
     {
         DEBUG(1, "MAC: %s / IP: %s\n", ether_ntoa(mac), inet_ntoa(*ip));
         snprintf(sbuf, ARRAY_SIZE(sbuf),
-                 "ip neigh replace %s dev %s lladdr %s proto " PHANTAP_RTPROTO,
-                 inet_ntoa(*ip), interface, ether_ntoa(mac));
+                 "ip neigh replace %s dev %s lladdr %s", inet_ntoa(*ip), interface, ether_ntoa(mac));
         DEBUG(2, "Executing '%s' ...\n", sbuf);
         if (system(sbuf))
             printf("Executing '%s' failed!!\n", sbuf);
