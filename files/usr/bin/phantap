@@ -93,7 +93,8 @@ while true; do
     break
 done
 
-echo "nameserver $dns_ip" > /tmp/resolv.conf
+echo "nameserver $dns_ip" > /tmp/resolv.conf.auto
+/etc/init.d/dnsmasq reload
 
 # Run all commands in ondnsconfig list
 config_list_foreach main ondnsconfig handle_onconfig
