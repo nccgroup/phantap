@@ -50,7 +50,7 @@ iptables -t nat -C POSTROUTING -o br-phantap -j phantap-snat \
 ebtables -t nat -F phantap-snat
 iptables -t nat -F phantap-snat
 # Replace our local mac with the victim mac
-ebtables -t nat -A phantap-snat -s $br_mac -o $BRIDGE -j snat --to-source $victim_mac
+ebtables -t nat -A phantap-snat -s $br_mac --logical-out $BRIDGE -j snat --to-source $victim_mac
 # Replace our local ip with the victim ip
 iptables -t nat -A phantap-snat -s $br_ip -j SNAT --to-source $victim_ip
 
