@@ -35,6 +35,8 @@ br_mac=$(cat /sys/class/net/$BRIDGE/address)
 network_get_ipaddr br_ip $INTF
 network_get_gateway gw_fakeip $INTF true
 
+config_firewall() {
+
 # Integrate with OpenWRT firewall
 cat > /tmp/phantap.firewall.$$ <<EOF
 # block local output on br-phantap
@@ -49,6 +51,19 @@ iptables -t nat -C POSTROUTING -o br-phantap -j phantap-snat \
 # Cleanup old rules if exist
 ebtables -t nat -F phantap-snat
 iptables -t nat -F phantap-snat
+$(if [ -n "${gw_ip}" ]; then
+cat <<EOS
+# We have detected the gateway ip, impersonate the gateway when talking to the victim
+ebtables -t nat -A phantap-snat -s $br_mac -d $victim_mac --logical-out $BRIDGE -j snat --to-source $gw_mac
+iptables -t nat -A phantap-snat -s $br_ip -d $victim_ip -j SNAT --to-source $gw_ip
+EOS
+else
+cat <<EOS
+# We have not detected the gateway ip, drop all traffic from phantap to the victim
+ebtables -t nat -A phantap-snat -s $br_mac -d $victim_mac --logical-out $BRIDGE -j DROP
+EOS
+fi
+)
 # Replace our local mac with the victim mac
 ebtables -t nat -A phantap-snat -s $br_mac --logical-out $BRIDGE -j snat --to-source $victim_mac
 # Replace our local ip with the victim ip
@@ -66,6 +81,10 @@ mv /tmp/phantap.firewall.$$ /tmp/phantap.firewall
 
 ebtables -t filter -A phantap-drop -j DROP
 /etc/init.d/firewall reload
+
+}
+
+config_firewall
 
 handle_onconfig() {
     /bin/sh -c "$1" || echo "'$1' failed"
@@ -100,4 +119,25 @@ echo "nameserver $dns_ip" > /tmp/resolv.conf.auto
 config_list_foreach main ondnsconfig handle_onconfig
 
 echo "setup done, you now have access to internet"
+
+while true; do
+    gw_ip=$(ip neigh show | grep $gw_mac | grep -v 169.254.66.101 | sed -E 's/^(\d+\.\d+\.\d+\.\d+) dev .*/mysedworked \1 \2/')
+    # ip neigh show =="10.1.2.1 dev br-phantap lladdr 66:77:88:99:aa:bb PERMANENT"
+    if [ -z "$gw_ip" ]; then
+        sleep 1
+        continue
+    fi
+    # gw_ip="mysedworked 10.1.2.1"
+    set -- $gw_ip
+    if [ "$1" != "mysedworked" ]; then
+        echo "Unable to parse neighbor information \"$gw_ip\", retrying"
+        sleep 1
+        continue
+    fi
+    gw_ip=$2
+    echo "We got the gateway IP! gw_ip=$gw_ip"
+    break
+done
+
+config_firewall
 
