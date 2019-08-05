@@ -27,6 +27,11 @@ PhanTap is an OpenWrt package and should be compatible with any device. The phys
 PhanTap has been tested with the GL.iNet GL-AR150. This device has two separate network interfaces in OpenWrt (eth0, eth1).
 If your device is using an internal switch(swconfig based) with interfaces like eth0.1, eth0.2, some special traffic might be blocked, e.g. 802.1Q(tagged vlan), but PhanTap should work.
 
+* Install a snapshot build, for the [GL.iNet GL-AR150](https://downloads.openwrt.org/snapshots/targets/ath79/generic/openwrt-ath79-generic-glinet_gl-ar150-squashfs-sysupgrade.bin)
+* Update the OpenWrt package list
+```
+opkg update
+```
 * Install PhanTap package:
 ```
 opkg install phantap phantap-learn
