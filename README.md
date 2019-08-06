@@ -21,6 +21,7 @@ PhanTap is an OpenWrt package and should be compatible with any device. The phys
 * Learns the DNS server from traffic and modifies the one on the router so that it's the same.
 * Can run commands (ex: /etc/init.d/openvpn restart) when a new IP or DNS is configured.
 * Lets you choose any VPN software, for example OpenVPN tcp port 443 so it goes through most firewalls.
+* You can talk to the victim machine (using the gateway IP).
 
 ## Setup
 
@@ -71,7 +72,6 @@ uci commit network
 * The network port  will stay up, switch side, when the victim device is disconnected/shutdown.
 * There is no re-configuration of PhanTap, so we might use an IP that has been reattributed to another device (roadmap DHCP).
 * Some traffic is blocked by the Linux bridge (STP/Pause frames/LACP).
-* You cannot talk to the victim machine, as you use its IP.
 
 ## Roadmap :
 
