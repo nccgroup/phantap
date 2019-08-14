@@ -11,9 +11,12 @@ while true; do
     # uses tcpdump to grab IPV4 unicast traffic with dest IP non rfc 1918
     # this assumes that:
     # - the victim is using rfc 1918 ip (not ipv6 / not public ip / ...)
-    # we use "ether proto 0x0800" instead of "ip" so we are sure there is no vlan
     echo "Listening to traffic ..."
-    packet=$(tcpdump -i $BRIDGE -nn -e -c 1 -Q in -q 'ether proto 0x0800 and not broadcast and not multicast and not (dst net (10.0.0.0/8 or 172.16.0.0/12 or 192.168.0.0/16 or 255.255.255.255/32 or 224.0.0.0/4))')
+    packet=$(tcpdump -i $BRIDGE -nn -e -c 1 -Q in -q "ether proto 0x0800 \
+                and not broadcast \
+                and not multicast \
+                and not (dst net (10.0.0.0/8 or 172.16.0.0/12 or 192.168.0.0/16 or 255.255.255.255/32 or 224.0.0.0/4)) \
+                and not vlan")
     # packet="09:42:42.424242 00:11:22:33:44:55 > 66:77:88:99:aa:bb, IPv4, length 66: 10.1.2.3.55334 > 1.2.3.4.443: tcp 0"
     # packet="09:42:42.424242 00:11:22:33:44:55 > 66:77:88:99:aa:bb, IPv4, length 98: 10.1.2.3 > 1.2.3.4: ICMP echo request, id 2940, seq 10, length 64"
     addresses=$(echo $packet | sed -E 's/^[^ ]+ ([0-9a-f:]{17}) > ([0-9a-f:]{17})[^:]+: (\d+\.\d+\.\d+\.\d+)\.?\d* > (\d+\.\d+\.\d+\.\d+)\.?\d*:.*/mysedworked \1 \2 \3 \4/')
@@ -97,7 +100,7 @@ config_list_foreach main onnetconfig handle_onconfig
 while true; do
     # uses tcpdump to grab dns traffic
     echo "Listening to traffic for dns config ..."
-    packet=$(tcpdump -i $BRIDGE -nn -e -c 1 -Q in -q 'ether proto 0x0800 and src port 53')
+    packet=$(tcpdump -i $BRIDGE -nn -e -c 1 -Q in -q 'ether proto 0x0800 and src port 53 and not vlan')
     # packet="23:37:55.861667 66:77:88:99:aa:bb > 00:11:22:33:44, IPv4, length 98: 8.8.8.8.53 > 10.1.2.3.59101: UDP, length 56"
     dns=$(echo $packet | sed -E 's/^[^ ]+ [0-9a-f:]{17} > [0-9a-f:]{17}.*+: (\d+\.\d+\.\d+\.\d+)\.\d+ > .*/mysedworked \1 \2/')
     # dns="mysedworked 8.8.8.8"
