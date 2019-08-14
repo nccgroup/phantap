@@ -27,12 +27,17 @@ unsigned int debug = 0;
 
 #define OPT_ARGS "i:v:"
 
-// Filter Ethernet IPv4 ARP packets (we never know), IPv4 broadcast,
-// and a subset of IPv4 mulitcast (we only want local & low traffic multicast)
-#define BPFFILTER "(arp[0:2] = 0x0001 and arp[2:2] = 0x0800)\
-                     or (ether broadcast and ether proto \\ip)\
-                     or (ip dst net 224.0.0.0/24)\
-                     or (ip dst net 239.255.255.0/24)"
+// Filter ethernet/IPv4 broadcast, a subset of IPv4 mulitcast (we only want local & low traffic multicast),
+// and ethernet IPv4 ARP packets (we never know). Exclude tagged traffic as libpcap/linux include it by default
+#define BPFFILTER "\
+(\
+       (ether proto 0x0800 and ether broadcast) \
+    or (ip dst 0.0.0.0) \
+    or (ip dst 255.255.255.255) \
+    or (ip dst net 224.0.0.0/24) \
+    or (ip dst net 239.255.255.0/24) \
+    or (arp[0:2] = 0x0001 and arp[2:2] = 0x0800) \
+) and not vlan"
 
 pcap_t *pcap_handle = NULL;
 char *interface = NULL;
