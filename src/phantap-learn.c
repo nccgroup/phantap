@@ -76,11 +76,12 @@ static void add_neighboor(const struct ether_addr *mac, const struct in_addr *ip
     }
 }
 
-static void handle_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
+static void handle_packet(u_char *args, const struct pcap_pkthdr *pkt_hdr, const u_char *packet)
 {
-    if (header->caplen < sizeof(struct ether_header))
+    uint32_t caplen = pkt_hdr->caplen;
+    if (caplen < sizeof(struct ether_header))
     {
-        ERROR("Capture too short for Ethernet (%u)\n", header->caplen);
+        ERROR("Capture too short for Ethernet (%u)\n", caplen);
         return;
     }
     const struct ether_header *eth_hdr = (struct ether_header *)packet;
@@ -88,24 +89,24 @@ static void handle_packet(u_char *args, const struct pcap_pkthdr *header, const 
     switch (ntohs(eth_hdr->ether_type))
     {
     case ETHERTYPE_IP:
-        if (header->caplen < ETH_HLEN + sizeof(struct ip))
+        if (caplen < sizeof(struct ether_header) + sizeof(struct ip))
         {
-            ERROR("Capture too short for IP (%u)\n", header->caplen);
+            ERROR("Capture too short for IP (%u)\n", caplen);
             return;
         }
-        const struct ip *ip_hdr = (struct ip *)(packet + ETH_HLEN);
+        const struct ip *ip_hdr = (struct ip *)(eth_hdr + 1);
         add_neighboor((struct ether_addr *)eth_hdr->ether_shost, &ip_hdr->ip_src);
         // right now ip_dst should always be broadcast / multicast and be filtered
         // out by the BPF filter, but it's cheap to keep it
         add_neighboor((struct ether_addr *)eth_hdr->ether_dhost, &ip_hdr->ip_dst);
         break;
     case ETHERTYPE_ARP:
-        if (header->caplen < ETH_HLEN + sizeof(struct ether_arp))
+        if (caplen < sizeof(struct ether_header) + sizeof(struct ether_arp))
         {
-            ERROR("Capture too short for ARP (%u)\n", header->caplen);
+            ERROR("Capture too short for ARP (%u)\n", caplen);
             return;
         }
-        const struct ether_arp *arp = (struct ether_arp *)(packet + ETH_HLEN);
+        const struct ether_arp *arp = (struct ether_arp *)(eth_hdr + 1);
         if (!(ntohs(arp->arp_hrd) == ARPHRD_ETHER && ntohs(arp->arp_pro) == ETHERTYPE_IP &&
               arp->arp_hln == ETH_ALEN && arp->arp_pln == sizeof(struct in_addr)))
         {
