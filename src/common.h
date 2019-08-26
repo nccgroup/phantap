@@ -15,12 +15,18 @@
 #define __COMMON_H
 
 #ifndef ARRAY_SIZE
-#define ARRAY_SIZE(X) sizeof((X))/sizeof((X)[0])
+#define ARRAY_SIZE(X) sizeof((X)) / sizeof((X)[0])
 #endif
 
 #define EO(mac) (((struct ether_addr *)mac)->ether_addr_octet)
 #define ETHER_MULTICAST(mac) (EO(mac)[0] & 0x1)
-#define ETHER_ZERO(mac) (!(EO(mac)[0]|EO(mac)[1]|EO(mac)[2]|EO(mac)[3]|EO(mac)[4]|EO(mac)[5]))
+#define ETHER_ZERO(mac) (!(EO(mac)[0] | EO(mac)[1] | EO(mac)[2] | EO(mac)[3] | EO(mac)[4] | EO(mac)[5]))
+#define ETHER_ADDR_NORMAL(mac) (!ETHER_MULTICAST(mac) && !ETHER_ZERO(mac))
+
+#define IN_ADDR_NORMAL(ip) (ntohl((ip).s_addr) != INADDR_ANY && \
+                            (IN_CLASSA(ntohl((ip).s_addr)) ||   \
+                             IN_CLASSB(ntohl((ip).s_addr)) ||   \
+                             IN_CLASSC(ntohl((ip).s_addr))))
 
 extern unsigned int debug;
 #define DEBUG(level, fmt, ...)                   \
@@ -32,7 +38,7 @@ extern unsigned int debug;
         }                                        \
     } while (0)
 
-#define ERROR(fmt, ...) DEBUG(0, "Error: "fmt, ##__VA_ARGS__)
+#define ERROR(fmt, ...) DEBUG(0, "Error: " fmt, ##__VA_ARGS__)
 
 // This allow us to filter route/neigh when displaying / flushing
 #define PHANTAP_RTPROTO "255"

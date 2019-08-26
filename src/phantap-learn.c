@@ -15,6 +15,7 @@
 #include <pcap/pcap.h>
 #include <signal.h>
 #include <string.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -54,26 +55,28 @@ static void usage(void)
                     "ip route flush proto " PHANTAP_RTPROTO "\n");
 }
 
-char sbuf[200];
-static void add_neighboor(const struct ether_addr *mac, const struct in_addr *ip)
+static void handle_neighboor(const struct ether_addr *mac, const struct in_addr *ip, bool arp)
 {
-    in_addr_t iph = ntohl(ip->s_addr);
-    if (!(IN_MULTICAST(iph) || iph == INADDR_ANY || iph == INADDR_BROADCAST || ETHER_MULTICAST(mac) || ETHER_ZERO(mac)))
+    if (!IN_ADDR_NORMAL(*ip) || !ETHER_ADDR_NORMAL(mac))
     {
-        DEBUG(1, "MAC: %s / IP: %s\n", ether_ntoa(mac), inet_ntoa(*ip));
-        snprintf(sbuf, ARRAY_SIZE(sbuf),
-                 "ip neigh replace %s dev %s lladdr %s", inet_ntoa(*ip), interface, ether_ntoa(mac));
-        DEBUG(2, "Executing '%s' ...\n", sbuf);
-        if (system(sbuf))
-            printf("Executing '%s' failed!!\n", sbuf);
-        // should we add "scope link" ? "onlink" ?
-        snprintf(sbuf, ARRAY_SIZE(sbuf),
-                 "ip route replace %s dev %s proto " PHANTAP_RTPROTO,
-                 inet_ntoa(*ip), interface);
-        DEBUG(2, "Executing '%s' ...\n", sbuf);
-        if (system(sbuf))
-            printf("Executing '%s' failed!!\n", sbuf);
+        // we don't want to add multicast / broadcast to the neigboor
+        return;
     }
+
+    char sbuf[200];
+    DEBUG(2, "MAC: %s / IP: %s\n", ether_ntoa(mac), inet_ntoa(*ip));
+    snprintf(sbuf, ARRAY_SIZE(sbuf),
+             "ip neigh replace %s dev %s lladdr %s", inet_ntoa(*ip), interface, ether_ntoa(mac));
+    DEBUG(3, "Executing '%s' ...\n", sbuf);
+    if (system(sbuf))
+        ERROR("Executing '%s' failed!!\n", sbuf);
+    // should we add "scope link" ? "onlink" ?
+    snprintf(sbuf, ARRAY_SIZE(sbuf),
+             "ip route replace %s dev %s proto " PHANTAP_RTPROTO,
+             inet_ntoa(*ip), interface);
+    DEBUG(3, "Executing '%s' ...\n", sbuf);
+    if (system(sbuf))
+        ERROR("Executing '%s' failed!!\n", sbuf);
 }
 
 static void handle_packet(u_char *args, const struct pcap_pkthdr *pkt_hdr, const u_char *packet)
@@ -95,10 +98,10 @@ static void handle_packet(u_char *args, const struct pcap_pkthdr *pkt_hdr, const
             return;
         }
         const struct ip *ip_hdr = (struct ip *)(eth_hdr + 1);
-        add_neighboor((struct ether_addr *)eth_hdr->ether_shost, &ip_hdr->ip_src);
+        handle_neighboor((struct ether_addr *)eth_hdr->ether_shost, &ip_hdr->ip_src, false);
         // right now ip_dst should always be broadcast / multicast and be filtered
         // out by the BPF filter, but it's cheap to keep it
-        add_neighboor((struct ether_addr *)eth_hdr->ether_dhost, &ip_hdr->ip_dst);
+        handle_neighboor((struct ether_addr *)eth_hdr->ether_dhost, &ip_hdr->ip_dst, false);
         break;
     case ETHERTYPE_ARP:
         if (caplen < sizeof(struct ether_header) + sizeof(struct ether_arp))
@@ -114,8 +117,8 @@ static void handle_packet(u_char *args, const struct pcap_pkthdr *pkt_hdr, const
                   ntohs(arp->arp_hrd), ntohs(arp->arp_pro), arp->arp_hln, arp->arp_pln);
             return;
         }
-        add_neighboor((struct ether_addr *)(arp->arp_sha), (struct in_addr *)(arp->arp_spa));
-        add_neighboor((struct ether_addr *)(arp->arp_tha), (struct in_addr *)(arp->arp_tpa));
+        handle_neighboor((struct ether_addr *)(arp->arp_sha), (struct in_addr *)(arp->arp_spa), true);
+        handle_neighboor((struct ether_addr *)(arp->arp_tha), (struct in_addr *)(arp->arp_tpa), true);
         break;
     default:
         // we should never get there based of the current BPF filter
