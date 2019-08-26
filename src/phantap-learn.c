@@ -79,6 +79,32 @@ static void handle_neighboor(const struct ether_addr *mac, const struct in_addr 
         ERROR("Executing '%s' failed!!\n", sbuf);
 }
 
+static bool set_bpf_filter(const char *filter)
+{
+    struct bpf_program pcapf;
+    bool ret = false;
+
+    // Compile the BPF filter ...
+    if (pcap_compile(pcap_handle, &pcapf, filter, 1, PCAP_NETMASK_UNKNOWN) != 0)
+    {
+        ERROR("pcap_compile error: %s\n", pcap_geterr(pcap_handle));
+        goto set_filter_exit_err;
+    }
+
+    // ... and enable it
+    if (pcap_setfilter(pcap_handle, &pcapf) != 0)
+    {
+        ERROR("pcap_setfilter error: %s\n", pcap_geterr(pcap_handle));
+        goto set_filter_exit_err;
+    }
+
+    ret = true;
+
+set_filter_exit_err:
+    pcap_freecode(&pcapf);
+    return ret;
+}
+
 static void handle_packet(u_char *args, const struct pcap_pkthdr *pkt_hdr, const u_char *packet)
 {
     uint32_t caplen = pkt_hdr->caplen;
@@ -136,7 +162,6 @@ int main(int argc, char **argv)
     int ch, pcapstatus, datalink;
     int status = EXIT_FAILURE;
     char errbuf[PCAP_ERRBUF_SIZE];
-    struct bpf_program pcapf;
 
     while ((ch = getopt(argc, argv, OPT_ARGS)) != -1)
     {
@@ -198,19 +223,8 @@ int main(int argc, char **argv)
         goto exit_err;
     }
 
-    // Compile the BPF filter ...
-    if (pcap_compile(pcap_handle, &pcapf, BPFFILTER, 1, PCAP_NETMASK_UNKNOWN) != 0)
-    {
-        ERROR("pcap_compile error: %s\n", pcap_geterr(pcap_handle));
+    if (set_bpf_filter(BPFFILTER) == false)
         goto exit_err;
-    }
-
-    // ... and enable it
-    if (pcap_setfilter(pcap_handle, &pcapf) != 0)
-    {
-        ERROR("pcap_setfilter error: %s\n", pcap_geterr(pcap_handle));
-        goto exit_err;
-    }
 
     // Loop
     DEBUG(2, "Before pcap_loop\n");
@@ -224,8 +238,6 @@ int main(int argc, char **argv)
 
     status = EXIT_SUCCESS;
 exit_err:
-    pcap_freecode(&pcapf);
-
     if (pcap_handle != NULL)
         pcap_close(pcap_handle);
 
