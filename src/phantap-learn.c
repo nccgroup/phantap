@@ -29,8 +29,10 @@
 
 #include "common.h"
 unsigned int debug = 0;
+#include "dhcp.h"
+#include "phantap-learn.h"
 
-#define OPT_ARGS "c:i:v:"
+#define OPT_ARGS "b:c:i:v:"
 
 // Filter ethernet/IPv4 broadcast, a subset of IPv4 mulitcast (we only want local & low traffic multicast),
 // and ethernet IPv4 ARP packets (we never know). Exclude tagged traffic as libpcap/linux include it by default
@@ -55,12 +57,14 @@ unsigned int debug = 0;
 
 struct netinfo cur_ni = {};
 pcap_t *pcap_handle = NULL;
+char *exec_block_net = NULL;
 char *exec_conf_net = NULL;
 char *interface = NULL;
 
 static void usage(void)
 {
     fprintf(stderr, "phantap-learn <options>\n");
+    fprintf(stderr, "  -b <exec_block_net>\tthe command to run to block network traffic\n");
     fprintf(stderr, "  -c <exec_conf_net>\tthe command to run on network conf changes\n");
     fprintf(stderr, "  -i <listen-interface>\tthe interface to listen on\n");
     fprintf(stderr, "  -v <debug-level>\tprint some debug info (level > 0)\n");
@@ -77,6 +81,19 @@ static void handle_neighboor(const struct ether_addr *mac, const struct in_addr 
     {
         // we don't want to add multicast / broadcast to the neigboor
         return;
+    }
+
+    if (IN_ADDR_EQ(cur_ni.victim_ip, (*ip)) && ETHER_CMP(&cur_ni.victim_mac, mac) != 0)
+    {
+        cur_ni.changed = true;
+        ETHER_CPY(&cur_ni.victim_mac, mac);
+        DEBUG(1, "Victim MAC: %s\n", ether_ntoa(&cur_ni.victim_mac));
+    }
+    if (IN_ADDR_EQ(cur_ni.gateway_ip, (*ip)) && ETHER_CMP(&cur_ni.gateway_mac, mac) != 0)
+    {
+        cur_ni.changed = true;
+        ETHER_CPY(&cur_ni.gateway_mac, mac);
+        DEBUG(1, "Gateway MAC: %s\n", ether_ntoa(&cur_ni.gateway_mac));
     }
 
     if (arp == true && ETHER_CMP(&cur_ni.gateway_mac, mac) == 0 && !IN_ADDR_EQ(cur_ni.gateway_ip, (*ip)))
@@ -188,6 +205,14 @@ set_filter_exit_err:
     return ret;
 }
 
+void block_traffic()
+{
+    DEBUG(1, "block_traffic()\n");
+    DEBUG(2, "Executing '%s' ...\n", exec_block_net);
+    if (system(exec_block_net))
+        ERROR("Executing '%s' failed!!\n", exec_block_net);
+}
+
 static void set_network()
 {
     cur_ni.changed = false;
@@ -284,6 +309,9 @@ static void handle_packet_ip(const struct ether_header *eth_hdr, const uint32_t 
         // we only want NTP responses
         if (ntohs(udp_hdr->uh_sport) == NTP_SERVER_PORT)
             handle_ntp(eth_hdr, ip_hdr);
+        // we only want DHCP responses
+        if (ntohs(udp_hdr->uh_sport) == DHCP_SERVER_PORT && ntohs(udp_hdr->uh_dport) == DHCP_CLIENT_PORT)
+            handle_dhcp((struct dhcp_packet *)(udp_hdr + 1), ((uint8_t *)eth_hdr) + caplen);
         break;
     case IPPROTO_TCP:
         if (caplen < sizeof(struct ether_header) + ip_hdr->ip_hl * 4 + sizeof(struct tcphdr))
@@ -366,6 +394,9 @@ int main(int argc, char **argv)
     {
         switch (ch)
         {
+        case 'b':
+            exec_block_net = optarg;
+            break;
         case 'c':
             exec_conf_net = optarg;
             break;
@@ -376,6 +407,13 @@ int main(int argc, char **argv)
             debug = atoi(optarg);
             break;
         }
+    }
+
+    if (exec_block_net == NULL)
+    {
+        ERROR("exec_block_net (-b) is mandatory !!!\n\n");
+        usage();
+        goto exit_err;
     }
 
     if (exec_conf_net == NULL)
@@ -398,9 +436,9 @@ int main(int argc, char **argv)
         goto exit_err;
     }
 
-    // Ethernet header (14) + ARP IPv4 (28) == 42
-    // Ethernet header (14) + IPv4 header (24) + TCP header (20) == 58
-    pcap_set_snaplen(pcap_handle, sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct tcphdr));
+    // Capture full ethernet frame
+    // TODO: confirm that when using bridge there is no packet bigger then ETH_FRAME_LEN (GRO ...)
+    pcap_set_snaplen(pcap_handle, ETH_FRAME_LEN);
 
     // We want all the traffic we can get, in particular broadcast/multicast
     pcap_set_promisc(pcap_handle, 1);
