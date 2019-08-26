@@ -28,7 +28,7 @@
 #include <arpa/inet.h>
 
 #include "common.h"
-unsigned int debug = 0;
+int debug = 0;
 #include "dhcp.h"
 #include "phantap-learn.h"
 

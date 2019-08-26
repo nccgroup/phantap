@@ -33,17 +33,17 @@
 #define IN_ADDR_EQ(ipa, ipb) (ipa.s_addr == ipb.s_addr)
 #define IN_SAME_NET(ipa, ipb, net) ((ntohl(ipa.s_addr) & net) == (ntohl(ipb.s_addr) & net))
 
-extern unsigned int debug;
-#define DEBUG(level, fmt, ...)                   \
-    do                                           \
-    {                                            \
-        if (debug >= level)                      \
-        {                                        \
-            fprintf(stderr, fmt, ##__VA_ARGS__); \
-        }                                        \
+extern int debug;
+#define DEBUG(level, fmt, ...)                                          \
+    do                                                                  \
+    {                                                                   \
+        if (debug >= level)                                             \
+        {                                                               \
+            fprintf(level == -1 ? stderr : stdout, fmt, ##__VA_ARGS__); \
+        }                                                               \
     } while (0)
 
-#define ERROR(fmt, ...) DEBUG(0, "Error: " fmt, ##__VA_ARGS__)
+#define ERROR(fmt, ...) DEBUG(-1, "Error: " fmt, ##__VA_ARGS__)
 
 // This allow us to filter route/neigh when displaying / flushing
 #define PHANTAP_RTPROTO "255"
