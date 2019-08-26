@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2019 Diana Dragusin <diana.dragusin@nccgroup.com>
  * Copyright (C) 2019 Etienne Champetier <champetier.etienne@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -22,11 +23,15 @@
 #define ETHER_MULTICAST(mac) (EO(mac)[0] & 0x1)
 #define ETHER_ZERO(mac) (!(EO(mac)[0] | EO(mac)[1] | EO(mac)[2] | EO(mac)[3] | EO(mac)[4] | EO(mac)[5]))
 #define ETHER_ADDR_NORMAL(mac) (!ETHER_MULTICAST(mac) && !ETHER_ZERO(mac))
+#define ETHER_CMP(maca, macb) memcmp(maca, macb, sizeof(struct ether_addr))
+#define ETHER_CPY(maca, macb) memcpy(maca, macb, sizeof(struct ether_addr))
 
 #define IN_ADDR_NORMAL(ip) (ntohl((ip).s_addr) != INADDR_ANY && \
                             (IN_CLASSA(ntohl((ip).s_addr)) ||   \
                              IN_CLASSB(ntohl((ip).s_addr)) ||   \
                              IN_CLASSC(ntohl((ip).s_addr))))
+#define IN_ADDR_EQ(ipa, ipb) (ipa.s_addr == ipb.s_addr)
+#define IN_SAME_NET(ipa, ipb, net) ((ntohl(ipa.s_addr) & net) == (ntohl(ipb.s_addr) & net))
 
 extern unsigned int debug;
 #define DEBUG(level, fmt, ...)                   \
@@ -42,5 +47,17 @@ extern unsigned int debug;
 
 // This allow us to filter route/neigh when displaying / flushing
 #define PHANTAP_RTPROTO "255"
+
+#include <stdbool.h>
+#include <net/ethernet.h>
+#include <netinet/in.h>
+struct netinfo
+{
+    struct ether_addr victim_mac, gateway_mac;
+    struct in_addr victim_ip, victim_netmask, gateway_ip, dns, ntp;
+    bool dhcp, changed;
+};
+
+extern struct netinfo cur_ni;
 
 #endif
