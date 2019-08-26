@@ -33,11 +33,14 @@
 
 #define OPTION_PAD               0
 #define OPTION_NETMASK           1
+#define OPTION_TIME_OFFSET       2
 #define OPTION_ROUTER            3
 #define OPTION_DNSSERVER         6
 #define OPTION_HOSTNAME          12
 #define OPTION_DOMAINNAME        15
+#define OPTION_IP_TTL            23
 #define OPTION_BROADCAST         28
+#define OPTION_NTPSERVER         42
 #define OPTION_VENDOR_CLASS_OPT  43
 #define OPTION_REQUESTED_IP      50 
 #define OPTION_LEASE_TIME        51
@@ -92,10 +95,10 @@
 #define DHCP_CHADDR_MAX 16
 
 struct dhcp_packet {
-  u8 op, htype, hlen, hops;
-  u32 xid;
-  u16 secs, flags;
+  uint8_t op, htype, hlen, hops;
+  uint32_t xid;
+  uint16_t secs, flags;
   struct in_addr ciaddr, yiaddr, siaddr, giaddr;
-  u8 chaddr[DHCP_CHADDR_MAX], sname[64], file[128];
-  u8 options[312];
+  uint8_t chaddr[DHCP_CHADDR_MAX], sname[64], file[128];
+  uint32_t cookie;
 };
