@@ -105,6 +105,39 @@ set_filter_exit_err:
     return ret;
 }
 
+static void handle_packet_ip(const struct ether_header *eth_hdr, const uint32_t caplen)
+{
+    if (caplen < sizeof(struct ether_header) + sizeof(struct ip))
+    {
+        ERROR("Capture too short for IP (%u)\n", caplen);
+        return;
+    }
+    const struct ip *ip_hdr = (struct ip *)(eth_hdr + 1);
+    handle_neighboor((struct ether_addr *)eth_hdr->ether_shost, &ip_hdr->ip_src, false);
+    // right now ip_dst should always be broadcast / multicast and be filtered
+    // out by the BPF filter, but it's cheap to keep it
+    handle_neighboor((struct ether_addr *)eth_hdr->ether_dhost, &ip_hdr->ip_dst, false);
+}
+
+static void handle_packet_arp(const struct ether_header *eth_hdr, const uint32_t caplen)
+{
+    if (caplen < sizeof(struct ether_header) + sizeof(struct ether_arp))
+    {
+        ERROR("Capture too short for ARP (%u)\n", caplen);
+        return;
+    }
+    const struct ether_arp *arp = (struct ether_arp *)(eth_hdr + 1);
+    if (!(ntohs(arp->arp_hrd) == ARPHRD_ETHER && ntohs(arp->arp_pro) == ETHERTYPE_IP &&
+          arp->arp_hln == ETH_ALEN && arp->arp_pln == sizeof(struct in_addr)))
+    {
+        ERROR("ARP packet is wrong (%#06x,%#06x,%#04x,%#04x)\n",
+              ntohs(arp->arp_hrd), ntohs(arp->arp_pro), arp->arp_hln, arp->arp_pln);
+        return;
+    }
+    handle_neighboor((struct ether_addr *)(arp->arp_sha), (struct in_addr *)(arp->arp_spa), true);
+    handle_neighboor((struct ether_addr *)(arp->arp_tha), (struct in_addr *)(arp->arp_tpa), true);
+}
+
 static void handle_packet(u_char *args, const struct pcap_pkthdr *pkt_hdr, const u_char *packet)
 {
     uint32_t caplen = pkt_hdr->caplen;
@@ -118,33 +151,10 @@ static void handle_packet(u_char *args, const struct pcap_pkthdr *pkt_hdr, const
     switch (ntohs(eth_hdr->ether_type))
     {
     case ETHERTYPE_IP:
-        if (caplen < sizeof(struct ether_header) + sizeof(struct ip))
-        {
-            ERROR("Capture too short for IP (%u)\n", caplen);
-            return;
-        }
-        const struct ip *ip_hdr = (struct ip *)(eth_hdr + 1);
-        handle_neighboor((struct ether_addr *)eth_hdr->ether_shost, &ip_hdr->ip_src, false);
-        // right now ip_dst should always be broadcast / multicast and be filtered
-        // out by the BPF filter, but it's cheap to keep it
-        handle_neighboor((struct ether_addr *)eth_hdr->ether_dhost, &ip_hdr->ip_dst, false);
+        handle_packet_ip(eth_hdr, caplen);
         break;
     case ETHERTYPE_ARP:
-        if (caplen < sizeof(struct ether_header) + sizeof(struct ether_arp))
-        {
-            ERROR("Capture too short for ARP (%u)\n", caplen);
-            return;
-        }
-        const struct ether_arp *arp = (struct ether_arp *)(eth_hdr + 1);
-        if (!(ntohs(arp->arp_hrd) == ARPHRD_ETHER && ntohs(arp->arp_pro) == ETHERTYPE_IP &&
-              arp->arp_hln == ETH_ALEN && arp->arp_pln == sizeof(struct in_addr)))
-        {
-            ERROR("ARP packet is wrong (%#06x,%#06x,%#04x,%#04x)\n",
-                  ntohs(arp->arp_hrd), ntohs(arp->arp_pro), arp->arp_hln, arp->arp_pln);
-            return;
-        }
-        handle_neighboor((struct ether_addr *)(arp->arp_sha), (struct in_addr *)(arp->arp_spa), true);
-        handle_neighboor((struct ether_addr *)(arp->arp_tha), (struct in_addr *)(arp->arp_tpa), true);
+        handle_packet_arp(eth_hdr, caplen);
         break;
     default:
         // we should never get there based of the current BPF filter
