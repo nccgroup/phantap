@@ -19,6 +19,7 @@ PhanTap is an OpenWrt package and should be compatible with any device. The phys
     * set the router default gateway to the MAC of the gateway detected just before.
 * Introspects ARP, multicast and broadcast traffic and adds a route to the machine IP address and adds the machine MAC address to the neighbor list, hence giving the possibility of talking to all the machines in the local network.
 * Learns the DNS server from traffic and modifies the one on the router so that it's the same.
+* Introspects DHCP packets for dynamic reconfiguration.
 * Can run commands (ex: /etc/init.d/openvpn restart) when a new IP or DNS is configured.
 * Lets you choose any VPN software, for example OpenVPN tcp port 443 so it goes through most firewalls.
 * You can talk to the victim machine (using the gateway IP).
@@ -35,7 +36,7 @@ opkg update
 ```
 * Install PhanTap package:
 ```
-opkg install phantap phantap-learn
+opkg install phantap
 ```
 * Configure the Wifi and start administering the router through it.
 * Either reboot the device, or run `/etc/init.d/phantap setup`.
@@ -76,6 +77,5 @@ uci commit network
 ## Roadmap :
 
 * Add logic to restart the detection when the links go up/down.
-* Add DHCP packet analysis for dynamic reconfiguration.
 * Add IPv6 support.
 * Test limitations of devices that have switches(swconfig) instead of separate interfaces.
