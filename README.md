@@ -71,7 +71,6 @@ uci commit network
 
 * The GL.iNet GL-AR150 and most inexpensive devices only support 100Mbps, meanwhile modern network traffic will be 1Gbps.
 * The network port  will stay up, switch side, when the victim device is disconnected/shutdown.
-* There is no re-configuration of PhanTap, so we might use an IP that has been reattributed to another device (roadmap DHCP).
 * Some traffic is blocked by the Linux bridge (STP/Pause frames/LACP).
 
 ## Roadmap :
