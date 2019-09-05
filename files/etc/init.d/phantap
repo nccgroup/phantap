@@ -65,8 +65,12 @@ set $np.ifname=''
 set $np.ipv6='0'
 EOF
 echo "Get the interface names from the device"
-echo "If the interfaces are part of a bridge already, remove them from the bridge"
-echo "Add the interfaces to the phantap bridge, for example (assuming eth0 and eth1 are used)"
+echo "uci show network | grep ifname"
+echo "If the interfaces are part of an interface already, remove them (assuming we are using a GL-AR150)"
+echo "uci delete network.lan.ifname"
+echo "uci delete network.wan.ifname"
+echo "uci delete network.wan6.ifname"
+echo "Add the interfaces to the phantap bridge and restart the network service (assuming we are using a GL-AR150)"
 echo "uci set network.phantap.ifname='eth0 eth1'"
 echo "uci commit network"
 echo "/etc/init.d/network reload"

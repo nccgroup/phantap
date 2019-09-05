@@ -50,17 +50,20 @@ network.wan6.ifname='eth0'
 ```
 In this example we are using a GL-AR150, which only has 2 interfaces.
 
-* Add the interfaces to the phantap bridge via the following commands in the cli
+* Remove the interfaces from any network interface they might be used by, if that's the case, via the following commands in the cli
 (assuming we are using a GL-AR150):
 ```
 uci delete network.lan.ifname
 uci delete network.wan.ifname
 uci delete network.wan6.ifname
+```
+* Add the interfaces to the phantap bridge and restart the network service via the following commands in the cli
+(assuming we are using a GL-AR150):
+```
 uci set network.phantap.ifname='eth0 eth1'
 uci commit network
 /etc/init.d/network reload
 ```
-
 * Phantap is now configured, as soon as you plug it between a victim and their switch, it will automatically configure the router and give it Internet access.
 
 * You can add your favorite VPN to have a remote connection back. We've tested PhanTap with [OpenVpn](https://openvpn.net/community-resources/how-to/), port TCP 443, to avoid some detection methods.
