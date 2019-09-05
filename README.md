@@ -17,7 +17,7 @@ PhanTap is an OpenWrt package and should be compatible with any device. The phys
     * capture traffic exiting the network (the destination is non RFC1918), source IP and MAC is our victim, destination MAC is our gateway,
     * SNAT bridge traffic to the victim MAC and IP address,
     * set the router default gateway to the MAC of the gateway detected just before.
-* Introspects ARP, multicast and broadcast traffic and adds a route to the machine IP address and adds the machine MAC address to the neighbor list, hence giving the possibility of talking to all the machines in the local network.
+* Introspects ARP, multicast and broadcast traffic and adds a route to the machine IP address and adds the machine MAC address to the neighbour list, hence giving the possibility of talking to all the machines in the local network.
 * Learns the DNS server from traffic and modifies the one on the router so that it's the same.
 * Introspects DHCP packets for dynamic reconfiguration.
 * Can run commands (ex: /etc/init.d/openvpn restart) when a new IP or DNS is configured.

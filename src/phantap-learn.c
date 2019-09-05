@@ -75,7 +75,7 @@ static void usage(void)
                     "ip route flush proto " PHANTAP_RTPROTO "\n");
 }
 
-static void handle_neighboor(const struct ether_addr *mac, const struct in_addr *ip, bool arp)
+static void handle_neighbour(const struct ether_addr *mac, const struct in_addr *ip, bool arp)
 {
     if (!IN_ADDR_NORMAL(*ip) || !ETHER_ADDR_NORMAL(mac))
     {
@@ -105,7 +105,7 @@ static void handle_neighboor(const struct ether_addr *mac, const struct in_addr 
 
     if (arp == false && (ETHER_ZERO(&cur_ni.gateway_mac) || ETHER_CMP(&cur_ni.gateway_mac, mac) == 0))
     {
-        // we don't want to add fake neighboor like gateway_mac / public_ip
+        // we don't want to add fake neighbour like gateway_mac / public_ip
         return;
     }
 
@@ -330,8 +330,8 @@ static void handle_packet_ip(const struct ether_header *eth_hdr, const uint32_t 
     }
 ethertype_ip_end:
     set_gateway_mac(eth_hdr, ip_hdr);
-    handle_neighboor((struct ether_addr *)eth_hdr->ether_shost, &ip_hdr->ip_src, false);
-    handle_neighboor((struct ether_addr *)eth_hdr->ether_dhost, &ip_hdr->ip_dst, false);
+    handle_neighbour((struct ether_addr *)eth_hdr->ether_shost, &ip_hdr->ip_src, false);
+    handle_neighbour((struct ether_addr *)eth_hdr->ether_dhost, &ip_hdr->ip_dst, false);
 }
 
 static void handle_packet_arp(const struct ether_header *eth_hdr, const uint32_t caplen)
@@ -349,8 +349,8 @@ static void handle_packet_arp(const struct ether_header *eth_hdr, const uint32_t
               ntohs(arp->arp_hrd), ntohs(arp->arp_pro), arp->arp_hln, arp->arp_pln);
         return;
     }
-    handle_neighboor((struct ether_addr *)(arp->arp_sha), (struct in_addr *)(arp->arp_spa), true);
-    handle_neighboor((struct ether_addr *)(arp->arp_tha), (struct in_addr *)(arp->arp_tpa), true);
+    handle_neighbour((struct ether_addr *)(arp->arp_sha), (struct in_addr *)(arp->arp_spa), true);
+    handle_neighbour((struct ether_addr *)(arp->arp_tha), (struct in_addr *)(arp->arp_tpa), true);
 }
 
 static void handle_packet(u_char *args, const struct pcap_pkthdr *pkt_hdr, const u_char *packet)
