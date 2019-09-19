@@ -25,11 +25,19 @@
 #define ETHER_ADDR_NORMAL(mac) (!ETHER_MULTICAST(mac) && !ETHER_ZERO(mac))
 #define ETHER_CMP(maca, macb) memcmp(maca, macb, sizeof(struct ether_addr))
 #define ETHER_CPY(maca, macb) memcpy(maca, macb, sizeof(struct ether_addr))
+#define IN_10_8(i) (((long)(i)&0xff000000) == 0x0a000000)
+#define IN_172_16_12(i) (((long)(i)&0xfff00000) == 0xac100000)
+#define IN_192_168_16(i) (((long)(i)&0xffff0000) == 0xc0a80000)
 
 #define IN_ADDR_NORMAL(ip) (ntohl((ip).s_addr) != INADDR_ANY && \
                             (IN_CLASSA(ntohl((ip).s_addr)) ||   \
                              IN_CLASSB(ntohl((ip).s_addr)) ||   \
                              IN_CLASSC(ntohl((ip).s_addr))))
+
+#define IN_ADDR_RFC1918(ip) (IN_10_8(ntohl((ip).s_addr)) ||      \
+                             IN_172_16_12(ntohl((ip).s_addr)) || \
+                             IN_192_168_16(ntohl((ip).s_addr)))
+
 #define IN_ADDR_EQ(ipa, ipb) (ipa.s_addr == ipb.s_addr)
 #define IN_SAME_NET(ipa, ipb, net) ((ntohl(ipa.s_addr) & net) == (ntohl(ipb.s_addr) & net))
 

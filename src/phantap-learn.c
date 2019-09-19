@@ -161,6 +161,20 @@ static void handle_ntp(const struct ether_header *eth_hdr, const struct ip *ip_h
     }
 }
 
+static void handle_internet(const struct ether_header *eth_hdr, const struct ip *ip_hdr)
+{
+    if (IN_ADDR_NORMAL(ip_hdr->ip_src) && !IN_ADDR_RFC1918(ip_hdr->ip_src) && IN_ADDR_RFC1918(ip_hdr->ip_dst))
+    {
+        cur_ni.changed = true;
+        ETHER_CPY(&cur_ni.victim_mac, eth_hdr->ether_dhost);
+        DEBUG(1, "Victim MAC: %s\n", ether_ntoa(&cur_ni.victim_mac));
+        cur_ni.victim_ip = ip_hdr->ip_dst;
+        DEBUG(1, "Victim IP: %s\n", inet_ntoa(cur_ni.victim_ip));
+        ETHER_CPY(&cur_ni.gateway_mac, eth_hdr->ether_shost);
+        DEBUG(1, "Gateway MAC: %s\n", ether_ntoa(&cur_ni.gateway_mac));
+    }
+}
+
 static void snappendf(char *buf, size_t maxlen, const char *format, ...)
 {
     size_t curlen = strlen(buf);
@@ -300,6 +314,9 @@ static void handle_packet_ip(const struct ether_header *eth_hdr, const uint32_t 
         DEBUG(2, "Skipping ip packet fragments\n");
         goto ethertype_ip_end;
     }
+
+    handle_internet(eth_hdr, ip_hdr);
+
     switch (ip_hdr->ip_p)
     {
     case IPPROTO_UDP:
