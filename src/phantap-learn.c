@@ -44,9 +44,11 @@ int debug = 0;
     or (ip dst net 224.0.0.0/24) \
     or (ip dst net 239.255.255.0/24)"
 
-#define BPFFILTER2 " or (ip and src portrange 1-1024) "
+#define BPFFILTER2_1 " or (ip and src portrange 1-1024) "
 
-#define BPFFILTER2bis " or (ip and src port 67) "
+#define BPFFILTER2_DHCP " or (ip and src port 67) "
+
+#define BPFFILTER2_DNS " or (ip and src port 53) "
 
 #define BPFFILTER3 "\
     or (arp[0:2] = 0x0001 and arp[2:2] = 0x0800) \
@@ -142,6 +144,7 @@ static void handle_dns(const struct ether_header *eth_hdr, const struct ip *ip_h
 {
     if (!IN_ADDR_EQ(cur_ni.dns, ip_hdr->ip_src))
     {
+        cur_ni.changed = true;
         cur_ni.dns = ip_hdr->ip_src;
         DEBUG(1, "DNS Server: %s\n", inet_ntoa(cur_ni.dns));
         _handle_response(eth_hdr, ip_hdr);
@@ -241,11 +244,15 @@ static void set_network()
         ERROR("Executing '%s' failed!!\n", sbuf);
 
     // Capture less traffic after initial detection
-    if (cur_ni.dhcp == true || (ntohl(cur_ni.gateway_ip.s_addr) != INADDR_ANY &&
-                                ntohl(cur_ni.dns.s_addr) != INADDR_ANY))
+    if (cur_ni.dhcp == true || ntohl(cur_ni.dns.s_addr) != INADDR_ANY)
     {
-        DEBUG(1, "set_network: loading new BPF filter\n");
-        set_bpf_filter(BPFFILTER1 BPFFILTER2bis BPFFILTER3);
+        DEBUG(1, "set_network: loading new BPF filter (dhcp only)\n");
+        set_bpf_filter(BPFFILTER1 BPFFILTER2_DHCP BPFFILTER3);
+    }
+    else
+    {
+        DEBUG(1, "set_network: loading new BPF filter (dhcp and dns)\n");
+        set_bpf_filter(BPFFILTER1 BPFFILTER2_DHCP BPFFILTER2_DNS BPFFILTER3);
     }
 }
 
@@ -470,7 +477,7 @@ int main(int argc, char **argv)
         goto exit_err;
     }
 
-    if (set_bpf_filter(BPFFILTER1 BPFFILTER2 BPFFILTER3) == false)
+    if (set_bpf_filter(BPFFILTER1 BPFFILTER2_1 BPFFILTER3) == false)
         goto exit_err;
 
     // Loop
