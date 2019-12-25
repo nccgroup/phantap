@@ -64,9 +64,10 @@ set $np.proto='static'
 set $np.ipaddr='169.254.66.100'
 set $np.netmask='255.255.255.254'
 set $np.gateway='169.254.66.101'
+set $np.ipv6='2001:db8::70:6861:6e74:6170/127'
+set $np.ip6gw='2001:db8::70:6861:6e74:6171'
 set $np.dns=''
 set $np.ifname=''
-set $np.ipv6='0'
 EOF
 echo "Get the interface names from the device"
 echo "uci show network | grep ifname"
@@ -132,10 +133,14 @@ ebtables -t nat -N phantap-snat -P RETURN 2>/dev/null \
 iptables -t nat -N phantap-snat 2>/dev/null
 iptables -t nat -C POSTROUTING -o br-phantap -j phantap-snat \
 || iptables -t nat -I POSTROUTING -o br-phantap -j phantap-snat
+ip6tables -t nat -N phantap-snat 2>/dev/null
+ip6tables -t nat -C POSTROUTING -o br-phantap -j phantap-snat \
+|| ip6tables -t nat -I POSTROUTING -o br-phantap -j phantap-snat
 
 # Cleanup old rules if exist
 ebtables -t nat -F phantap-snat
 iptables -t nat -F phantap-snat
+ip6tables -t nat -F phantap-snat
 $(if [ "$P_GATEWAY_IP4" != "0.0.0.0" ]; then
 cat <<EOS
 # We have detected the gateway ip, impersonate the gateway when talking to the victim
