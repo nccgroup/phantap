@@ -19,7 +19,7 @@
 #define DHCP_CLIENT_ALTPORT 1068
 #define PXE_PORT 4011
 
-/* These each hold a DHCP option max size 255
+/* These each hold a DHCP4 option max size 255
    and get a terminating zero added */
 #define DHCP_BUFF_SZ 256
 
@@ -27,7 +27,7 @@
 #define BOOTREPLY                2
 #define DHCP_COOKIE              0x63825363
 
-/* The Linux in-kernel DHCP client silently ignores any packet 
+/* The Linux in-kernel DHCP4 client silently ignores any packet
    smaller than this. Sigh...........   */
 #define MIN_PACKETSZ             300
 

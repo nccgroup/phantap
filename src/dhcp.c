@@ -32,23 +32,23 @@ void handle_dhcp(const struct dhcp_packet *dhcp_pkt, const uint8_t *end)
     const uint8_t *cur = (uint8_t *)(dhcp_pkt + 1);
     if (cur >= end)
     {
-        ERROR("Capture too short for DHCP\n");
+        ERROR("Capture too short for DHCP4\n");
         return;
     }
     if (dhcp_pkt->op != BOOTREPLY)
     {
-        DEBUG(2, "Ignoring non reply DHCP packet (%u)\n", dhcp_pkt->op);
+        DEBUG(2, "Ignoring non reply DHCP4 packet (%u)\n", dhcp_pkt->op);
         return;
     }
     if (!(dhcp_pkt->htype == ARPHRD_ETHER && dhcp_pkt->hlen == ETH_ALEN &&
           ntohl(dhcp_pkt->cookie) == DHCP_COOKIE))
     {
-        ERROR("Invalid DHCP packet\n");
+        ERROR("Invalid DHCP4 packet\n");
         return;
     }
 
     struct netinfo ni = {};
-    ni.dhcp = ni.changed = true;
+    ni.dhcp4 = ni.changed = true;
     while (cur < end)
     {
         uint8_t option = *cur;
@@ -58,7 +58,7 @@ void handle_dhcp(const struct dhcp_packet *dhcp_pkt, const uint8_t *end)
 
         if (cur >= end)
         {
-            ERROR("Trying to read after the end of the dhcp packet\n");
+            ERROR("Trying to read after the end of the dhcp4 packet\n");
             break;
         }
         uint8_t len = *cur;
@@ -75,7 +75,7 @@ void handle_dhcp(const struct dhcp_packet *dhcp_pkt, const uint8_t *end)
         case OPTION_IP_TTL:
             if (len != 1)
             {
-                ERROR("DHCP option %u, len should be 1 but is %u\n", option, len);
+                ERROR("DHCP4 option %u, len should be 1 but is %u\n", option, len);
             }
             break;
 
@@ -85,7 +85,7 @@ void handle_dhcp(const struct dhcp_packet *dhcp_pkt, const uint8_t *end)
         case OPTION_TIME_OFFSET:
             if (len != 4)
             {
-                ERROR("DHCP option %u, len should be 4 but is %u\n", option, len);
+                ERROR("DHCP4 option %u, len should be 4 but is %u\n", option, len);
             }
             break;
 
@@ -94,7 +94,7 @@ void handle_dhcp(const struct dhcp_packet *dhcp_pkt, const uint8_t *end)
         case OPTION_NTPSERVER:
             if (len % 4 != 0)
             {
-                ERROR("DHCP option %u, len should be a multiple of 4 but is %u\n", option, len);
+                ERROR("DHCP4 option %u, len should be a multiple of 4 but is %u\n", option, len);
             }
             break;
 
@@ -108,7 +108,7 @@ void handle_dhcp(const struct dhcp_packet *dhcp_pkt, const uint8_t *end)
         switch (option)
         {
         case OPTION_MESSAGE_TYPE:
-            DEBUG(2, "DHCP message type %u\n", *cur);
+            DEBUG(2, "DHCP4 message type %u\n", *cur);
             switch (*cur)
             {
             case DHCPDECLINE:
@@ -127,22 +127,22 @@ void handle_dhcp(const struct dhcp_packet *dhcp_pkt, const uint8_t *end)
                 // We should have all our info in this packet, so continue
                 break;
             default:
-                ERROR("DHCP Message Type impossible value %u\n", *cur);
+                ERROR("DHCP4 Message Type impossible value %u\n", *cur);
                 goto dhcp_while_end;
             }
             break;
         case OPTION_NETMASK:
-            ni.victim_ip = dhcp_pkt->yiaddr;
-            ni.victim_netmask = *(struct in_addr *)cur;
+            ni.victim_ip4 = dhcp_pkt->yiaddr;
+            ni.victim_netmask4 = *(struct in_addr *)cur;
             break;
         case OPTION_ROUTER:
-            ni.gateway_ip = *(struct in_addr *)cur;
+            ni.gateway_ip4 = *(struct in_addr *)cur;
             break;
         case OPTION_DNSSERVER:
-            ni.dns = *(struct in_addr *)cur;
+            ni.dns4 = *(struct in_addr *)cur;
             break;
         case OPTION_NTPSERVER:
-            ni.ntp = *(struct in_addr *)cur;
+            ni.ntp4 = *(struct in_addr *)cur;
             break;
         default:
             break;
@@ -151,22 +151,22 @@ void handle_dhcp(const struct dhcp_packet *dhcp_pkt, const uint8_t *end)
         cur += len;
     }
 
-    if (IN_ADDR_EQ(cur_ni.victim_ip, ni.victim_ip) &&
-        IN_ADDR_EQ(cur_ni.victim_netmask, ni.victim_netmask) &&
-        IN_ADDR_EQ(cur_ni.gateway_ip, ni.gateway_ip) &&
-        IN_ADDR_EQ(cur_ni.dns, ni.dns))
+    if (IN_ADDR_EQ(cur_ni.victim_ip4, ni.victim_ip4) &&
+        IN_ADDR_EQ(cur_ni.victim_netmask4, ni.victim_netmask4) &&
+        IN_ADDR_EQ(cur_ni.gateway_ip4, ni.gateway_ip4) &&
+        IN_ADDR_EQ(cur_ni.dns4, ni.dns4))
     {
-        DEBUG(1, "No DHCP config changes\n");
+        DEBUG(1, "No DHCP4 config changes\n");
     }
     else
     {
         memcpy(&cur_ni, &ni, sizeof(cur_ni));
-        DEBUG(1, "New DHCP config detected: ");
-        DEBUG(1, "IP=%s ", inet_ntoa(cur_ni.victim_ip));
-        DEBUG(1, "NETMASK=%s ", inet_ntoa(cur_ni.victim_netmask));
-        DEBUG(1, "GATEWAY=%s ", inet_ntoa(cur_ni.gateway_ip));
-        DEBUG(1, "DNS=%s ", inet_ntoa(cur_ni.dns));
-        DEBUG(1, "NTP=%s\n", inet_ntoa(cur_ni.ntp));
+        DEBUG(1, "New DHCP4 config detected: ");
+        DEBUG(1, "IP4=%s ", inet_ntoa(cur_ni.victim_ip4));
+        DEBUG(1, "NETMASK4=%s ", inet_ntoa(cur_ni.victim_netmask4));
+        DEBUG(1, "GATEWAY4=%s ", inet_ntoa(cur_ni.gateway_ip4));
+        DEBUG(1, "DNS4=%s ", inet_ntoa(cur_ni.dns4));
+        DEBUG(1, "NTP4=%s\n", inet_ntoa(cur_ni.ntp4));
         // we have new config but we don't have the gateway_mac yet, so block traffic
         block_traffic();
     }

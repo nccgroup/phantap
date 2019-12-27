@@ -34,8 +34,8 @@ block_net() {
 }
 
 conf_net() {
-    # P_VICTIM_MAC P_VICTIM_IP P_NETMASK P_GATEWAY_MAC P_GATEWAY_IP P_DNS P_NTP
-    echo "conf_net: P_VICTIM_MAC=$P_VICTIM_MAC P_VICTIM_IP=$P_VICTIM_IP P_GATEWAY_MAC=$P_GATEWAY_MAC P_GATEWAY_IP=$P_GATEWAY_IP P_DNS=$P_DNS"
+    # P_VICTIM_MAC P_VICTIM_IP4 P_NETMASK4 P_GATEWAY_MAC P_GATEWAY_IP4 P_DNS4 P_NTP4 P_VICTIM_IP6 P_GATEWAY_IP6 P_DNS6 P_NTP6
+    echo "conf_net: P_VICTIM_MAC=$P_VICTIM_MAC P_VICTIM_IP4=$P_VICTIM_IP4 P_GATEWAY_MAC=$P_GATEWAY_MAC P_GATEWAY_IP4=$P_GATEWAY_IP4 P_DNS4=$P_DNS4"
     . /lib/functions.sh
 
     _config_firewall
@@ -44,7 +44,7 @@ conf_net() {
     # Run all commands in onnetconfig list
     config_list_foreach main onnetconfig _handle_onconfig
 
-    if [ "$P_DNS" != "0.0.0.0" ]; then
+    if [ "$P_DNS4" != "0.0.0.0" ]; then
         _config_dns
         # Run all commands in ondnsconfig list
         config_list_foreach main ondnsconfig _handle_onconfig
@@ -108,7 +108,7 @@ uci commit
 }
 
 _config_dns() {
-    echo "nameserver $P_DNS" > /tmp/resolv.conf.auto
+    echo "nameserver $P_DNS4" > /tmp/resolv.conf.auto
     /etc/init.d/dnsmasq reload
 }
 
@@ -119,8 +119,8 @@ P_INTF=phantap
 network_get_device P_BRIDGE $P_INTF
 [ -z "$P_BRIDGE" ] && { echo "Bridge not ready"; exit; }
 P_BR_MAC=$(cat /sys/class/net/$P_BRIDGE/address)
-network_get_ipaddr P_BR_IP $P_INTF
-network_get_gateway P_GW_FAKEIP $P_INTF true
+network_get_ipaddr P_BR_IP4 $P_INTF
+network_get_gateway P_GW_FAKEIP4 $P_INTF true
 
 # Integrate with OpenWRT firewall
 cat > /tmp/phantap.firewall.$$ <<EOF
@@ -136,11 +136,11 @@ iptables -t nat -C POSTROUTING -o br-phantap -j phantap-snat \
 # Cleanup old rules if exist
 ebtables -t nat -F phantap-snat
 iptables -t nat -F phantap-snat
-$(if [ "$P_GATEWAY_IP" != "0.0.0.0" ]; then
+$(if [ "$P_GATEWAY_IP4" != "0.0.0.0" ]; then
 cat <<EOS
 # We have detected the gateway ip, impersonate the gateway when talking to the victim
 ebtables -t nat -A phantap-snat -s $P_BR_MAC -d $P_VICTIM_MAC --logical-out $P_BRIDGE -j snat --to-source $P_GATEWAY_MAC
-iptables -t nat -A phantap-snat -s $P_BR_IP -d $P_VICTIM_IP -j SNAT --to-source $P_GATEWAY_IP
+iptables -t nat -A phantap-snat -s $P_BR_IP4 -d $P_VICTIM_IP4 -j SNAT --to-source $P_GATEWAY_IP4
 EOS
 else
 cat <<EOS
@@ -152,10 +152,10 @@ fi
 # Replace our local mac with the victim mac
 ebtables -t nat -A phantap-snat -s $P_BR_MAC --logical-out $P_BRIDGE -j snat --to-source $P_VICTIM_MAC
 # Replace our local ip with the victim ip
-iptables -t nat -A phantap-snat -s $P_BR_IP -j SNAT --to-source $P_VICTIM_IP
+iptables -t nat -A phantap-snat -s $P_BR_IP4 -j SNAT --to-source $P_VICTIM_IP4
 
 # Add mac for the fake gateway
-ip neigh replace $P_GW_FAKEIP lladdr $P_GATEWAY_MAC dev $P_BRIDGE
+ip neigh replace $P_GW_FAKEIP4 lladdr $P_GATEWAY_MAC dev $P_BRIDGE
 
 # allow local output on br-phantap again, we now have internet access
 ebtables -t filter -F phantap-drop

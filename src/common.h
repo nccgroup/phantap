@@ -62,8 +62,8 @@ extern int debug;
 struct netinfo
 {
     struct ether_addr victim_mac, gateway_mac;
-    struct in_addr victim_ip, victim_netmask, gateway_ip, dns, ntp;
-    bool dhcp, changed;
+    struct in_addr victim_ip4, victim_netmask4, gateway_ip4, dns4, ntp4;
+    bool dhcp4, changed;
 };
 
 extern struct netinfo cur_ni;

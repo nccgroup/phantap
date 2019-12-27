@@ -85,24 +85,24 @@ static void handle_neighbour(const struct ether_addr *mac, const struct in_addr 
         return;
     }
 
-    if (IN_ADDR_EQ(cur_ni.victim_ip, (*ip)) && ETHER_CMP(&cur_ni.victim_mac, mac) != 0)
+    if (IN_ADDR_EQ(cur_ni.victim_ip4, (*ip)) && ETHER_CMP(&cur_ni.victim_mac, mac) != 0)
     {
         cur_ni.changed = true;
         ETHER_CPY(&cur_ni.victim_mac, mac);
         DEBUG(1, "Victim MAC: %s\n", ether_ntoa(&cur_ni.victim_mac));
     }
-    if (IN_ADDR_EQ(cur_ni.gateway_ip, (*ip)) && ETHER_CMP(&cur_ni.gateway_mac, mac) != 0)
+    if (IN_ADDR_EQ(cur_ni.gateway_ip4, (*ip)) && ETHER_CMP(&cur_ni.gateway_mac, mac) != 0)
     {
         cur_ni.changed = true;
         ETHER_CPY(&cur_ni.gateway_mac, mac);
         DEBUG(1, "Gateway MAC: %s\n", ether_ntoa(&cur_ni.gateway_mac));
     }
 
-    if (arp == true && ETHER_CMP(&cur_ni.gateway_mac, mac) == 0 && !IN_ADDR_EQ(cur_ni.gateway_ip, (*ip)))
+    if (arp == true && ETHER_CMP(&cur_ni.gateway_mac, mac) == 0 && !IN_ADDR_EQ(cur_ni.gateway_ip4, (*ip)))
     {
         cur_ni.changed = true;
-        cur_ni.gateway_ip.s_addr = ip->s_addr;
-        DEBUG(1, "Gateway IP: %s\n", inet_ntoa(cur_ni.gateway_ip));
+        cur_ni.gateway_ip4.s_addr = ip->s_addr;
+        DEBUG(1, "Gateway IP4: %s\n", inet_ntoa(cur_ni.gateway_ip4));
     }
 
     if (arp == false && (ETHER_ZERO(&cur_ni.gateway_mac) || ETHER_CMP(&cur_ni.gateway_mac, mac) == 0))
@@ -132,31 +132,31 @@ static void handle_neighbour(const struct ether_addr *mac, const struct in_addr 
 static void _handle_response(const struct ether_header *eth_hdr, const struct ip *ip_hdr)
 {
     if (IN_ADDR_NORMAL(ip_hdr->ip_dst) && ETHER_ADDR_NORMAL(eth_hdr->ether_dhost) &&
-        !IN_ADDR_EQ(cur_ni.victim_ip, ip_hdr->ip_dst))
+        !IN_ADDR_EQ(cur_ni.victim_ip4, ip_hdr->ip_dst))
     {
         cur_ni.changed = true;
         ETHER_CPY(&cur_ni.victim_mac, eth_hdr->ether_dhost);
-        cur_ni.victim_ip = ip_hdr->ip_dst;
+        cur_ni.victim_ip4 = ip_hdr->ip_dst;
     }
 }
 
 static void handle_dns(const struct ether_header *eth_hdr, const struct ip *ip_hdr)
 {
-    if (!IN_ADDR_EQ(cur_ni.dns, ip_hdr->ip_src))
+    if (!IN_ADDR_EQ(cur_ni.dns4, ip_hdr->ip_src))
     {
         cur_ni.changed = true;
-        cur_ni.dns = ip_hdr->ip_src;
-        DEBUG(1, "DNS Server: %s\n", inet_ntoa(cur_ni.dns));
+        cur_ni.dns4 = ip_hdr->ip_src;
+        DEBUG(1, "DNS4 Server: %s\n", inet_ntoa(cur_ni.dns4));
         _handle_response(eth_hdr, ip_hdr);
     }
 }
 
 static void handle_ntp(const struct ether_header *eth_hdr, const struct ip *ip_hdr)
 {
-    if (!IN_ADDR_EQ(cur_ni.ntp, ip_hdr->ip_src))
+    if (!IN_ADDR_EQ(cur_ni.ntp4, ip_hdr->ip_src))
     {
-        cur_ni.ntp = ip_hdr->ip_src;
-        DEBUG(1, "NTP Server: %s\n", inet_ntoa(cur_ni.ntp));
+        cur_ni.ntp4 = ip_hdr->ip_src;
+        DEBUG(1, "NTP4 Server: %s\n", inet_ntoa(cur_ni.ntp4));
         _handle_response(eth_hdr, ip_hdr);
     }
 }
@@ -168,8 +168,8 @@ static void handle_internet(const struct ether_header *eth_hdr, const struct ip 
         cur_ni.changed = true;
         ETHER_CPY(&cur_ni.victim_mac, eth_hdr->ether_dhost);
         DEBUG(1, "Victim MAC: %s\n", ether_ntoa(&cur_ni.victim_mac));
-        cur_ni.victim_ip = ip_hdr->ip_dst;
-        DEBUG(1, "Victim IP: %s\n", inet_ntoa(cur_ni.victim_ip));
+        cur_ni.victim_ip4 = ip_hdr->ip_dst;
+        DEBUG(1, "Victim IP4: %s\n", inet_ntoa(cur_ni.victim_ip4));
         ETHER_CPY(&cur_ni.gateway_mac, eth_hdr->ether_shost);
         DEBUG(1, "Gateway MAC: %s\n", ether_ntoa(&cur_ni.gateway_mac));
     }
@@ -188,12 +188,12 @@ static void print_netinfo(char *buf, size_t maxlen)
 {
     buf[0] = '\0';
     snappendf(buf, maxlen, "P_VICTIM_MAC=%s ", ether_ntoa(&cur_ni.victim_mac));
-    snappendf(buf, maxlen, "P_VICTIM_IP=%s ", inet_ntoa(cur_ni.victim_ip));
-    snappendf(buf, maxlen, "P_NETMASK=%s ", inet_ntoa(cur_ni.victim_netmask));
+    snappendf(buf, maxlen, "P_VICTIM_IP4=%s ", inet_ntoa(cur_ni.victim_ip4));
+    snappendf(buf, maxlen, "P_NETMASK4=%s ", inet_ntoa(cur_ni.victim_netmask4));
     snappendf(buf, maxlen, "P_GATEWAY_MAC=%s ", ether_ntoa(&cur_ni.gateway_mac));
-    snappendf(buf, maxlen, "P_GATEWAY_IP=%s ", inet_ntoa(cur_ni.gateway_ip));
-    snappendf(buf, maxlen, "P_DNS=%s ", inet_ntoa(cur_ni.dns));
-    snappendf(buf, maxlen, "P_NTP=%s", inet_ntoa(cur_ni.ntp));
+    snappendf(buf, maxlen, "P_GATEWAY_IP4=%s ", inet_ntoa(cur_ni.gateway_ip4));
+    snappendf(buf, maxlen, "P_DNS4=%s ", inet_ntoa(cur_ni.dns4));
+    snappendf(buf, maxlen, "P_NTP4=%s", inet_ntoa(cur_ni.ntp4));
 }
 
 static bool set_bpf_filter(const char *filter)
@@ -238,9 +238,9 @@ static void set_network()
         DEBUG(1, "set_network: We don't know victim_mac yet\n");
         return;
     }
-    if (ntohl(cur_ni.victim_ip.s_addr) == INADDR_ANY)
+    if (ntohl(cur_ni.victim_ip4.s_addr) == INADDR_ANY)
     {
-        ERROR("set_network: We don't know victim_ip, this should not happen\n");
+        ERROR("set_network: We don't know victim_ip4, this should not happen\n");
         return;
     }
     if (ETHER_ZERO(&cur_ni.gateway_mac))
@@ -258,14 +258,14 @@ static void set_network()
         ERROR("Executing '%s' failed!!\n", sbuf);
 
     // Capture less traffic after initial detection
-    if (cur_ni.dhcp == true || ntohl(cur_ni.dns.s_addr) != INADDR_ANY)
+    if (cur_ni.dhcp4 == true || ntohl(cur_ni.dns4.s_addr) != INADDR_ANY)
     {
-        DEBUG(1, "set_network: loading new BPF filter (dhcp only)\n");
+        DEBUG(1, "set_network: loading new BPF filter (dhcp4 only)\n");
         set_bpf_filter(BPFFILTER1 BPFFILTER2_DHCP BPFFILTER3);
     }
     else
     {
-        DEBUG(1, "set_network: loading new BPF filter (dhcp and dns)\n");
+        DEBUG(1, "set_network: loading new BPF filter (dhcp4 and dns4)\n");
         set_bpf_filter(BPFFILTER1 BPFFILTER2_DHCP BPFFILTER2_DNS BPFFILTER3);
     }
 }
@@ -287,12 +287,12 @@ static void set_gateway_mac(const struct ether_header *eth_hdr, const struct ip 
     if (!IN_SAME_NET(ip_hdr->ip_src, ip_hdr->ip_dst, 0xff000000))
     {
         // src and dst are not in the same /8
-        if (IN_ADDR_EQ(cur_ni.victim_ip, ip_hdr->ip_src))
+        if (IN_ADDR_EQ(cur_ni.victim_ip4, ip_hdr->ip_src))
         {
             cur_ni.changed = true;
             ETHER_CPY(&cur_ni.gateway_mac, eth_hdr->ether_dhost);
         }
-        if (IN_ADDR_EQ(cur_ni.victim_ip, ip_hdr->ip_dst))
+        if (IN_ADDR_EQ(cur_ni.victim_ip4, ip_hdr->ip_dst))
         {
             cur_ni.changed = true;
             ETHER_CPY(&cur_ni.gateway_mac, eth_hdr->ether_shost);
@@ -327,13 +327,13 @@ static void handle_packet_ip(const struct ether_header *eth_hdr, const uint32_t 
         }
         const struct udphdr *udp_hdr = (struct udphdr *)(((uint32_t *)ip_hdr) + ip_hdr->ip_hl);
         DEBUG(2, "UDP: src=%u dst=%u\n", ntohs(udp_hdr->uh_sport), ntohs(udp_hdr->uh_dport));
-        // we only want DNS responses
+        // we only want DNS4 responses
         if (ntohs(udp_hdr->uh_sport) == DNS_SERVER_PORT)
             handle_dns(eth_hdr, ip_hdr);
-        // we only want NTP responses
+        // we only want NTP4 responses
         if (ntohs(udp_hdr->uh_sport) == NTP_SERVER_PORT)
             handle_ntp(eth_hdr, ip_hdr);
-        // we only want DHCP responses
+        // we only want DHCP4 responses
         if (ntohs(udp_hdr->uh_sport) == DHCP_SERVER_PORT && ntohs(udp_hdr->uh_dport) == DHCP_CLIENT_PORT)
             handle_dhcp((struct dhcp_packet *)(udp_hdr + 1), ((uint8_t *)eth_hdr) + caplen);
         break;
@@ -345,7 +345,7 @@ static void handle_packet_ip(const struct ether_header *eth_hdr, const uint32_t 
         }
         const struct tcphdr *th = (struct tcphdr *)(((uint32_t *)ip_hdr) + ip_hdr->ip_hl);
         DEBUG(2, "TCP: src=%u dst=%u\n", ntohs(th->th_sport), ntohs(th->th_dport));
-        // we only want DNS responses
+        // we only want DNS4 responses
         if (ntohs(th->th_sport) == DNS_SERVER_PORT)
             handle_dns(eth_hdr, ip_hdr);
         break;
