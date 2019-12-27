@@ -75,6 +75,7 @@ uci commit network
 * The GL.iNet GL-AR150 and most inexpensive devices only support 100Mbps, meanwhile modern network traffic will be 1Gbps.
 * The network port  will stay up, switch side, when the victim device is disconnected/shutdown.
 * Some traffic is blocked by the Linux bridge (STP/Pause frames/LACP).
+* OpenWrt failsafe mode sends IPv4 and IPv6 packets as described in the documentation: https://openwrt.org/docs/guide-user/troubleshooting/failsafe_and_factory_reset. This happens during early boot and can get the device detected. There is no easy solution to disable it at runtime, as this configuration is in U-Boot. The U-Boot partition is mounted as read-only and it's configuration can only be accessed and modified from the U-Boot shell (via UART on the GL-AR150 for example). The easier solution is to compile OpenWrt with the TARGET_PREINIT_DISABLE_FAILSAFE option enabled.
 
 ## Roadmap :
 

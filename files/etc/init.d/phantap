@@ -6,6 +6,10 @@ EXTRA_COMMANDS="setup block_net conf_net"
 
 boot()
 {
+    grep -q 'pi_preinit_no_failsafe="y"' /lib/preinit/00_preinit.conf || (
+       logger phantap "OpenWrt failsafe is on, the device will leak it's MAC address during early boot"
+       logger phantap "See https://github.com/nccgroup/phantap/blob/master/README.md#limitations-or-how-it-can-be-detected-"
+    )
     uci get network.phantap &>/dev/null || setup
     # prevent leaks
     ebtables -t filter -N phantap-drop -P RETURN
