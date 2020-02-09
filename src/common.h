@@ -53,8 +53,11 @@ extern int debug;
 
 #define ERROR(fmt, ...) DEBUG(-1, "Error: " fmt, ##__VA_ARGS__)
 
+#define str(s) str2(s)
+#define str2(s) #s
+
 // This allow us to filter route/neigh when displaying / flushing
-#define PHANTAP_RTPROTO "255"
+#define PHANTAP_RTPROTO 255
 
 #include <stdbool.h>
 #include <net/ethernet.h>

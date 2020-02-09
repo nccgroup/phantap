@@ -13,6 +13,7 @@
  */
 
 #define _GNU_SOURCE
+#include <errno.h>
 #include <pcap/pcap.h>
 #include <signal.h>
 #include <string.h>
@@ -21,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <net/if.h>
 #include <netinet/ether.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
@@ -30,6 +32,7 @@
 #include "common.h"
 int debug = 0;
 #include "dhcp.h"
+#include "netlink.h"
 #include "phantap-learn.h"
 
 #define OPT_ARGS "b:c:i:v:"
@@ -61,20 +64,27 @@ struct netinfo cur_ni = {};
 pcap_t *pcap_handle = NULL;
 char *exec_block_net = NULL;
 char *exec_conf_net = NULL;
-char *interface = NULL;
+char *ifname = NULL;
+struct nl_sock *nl_sock = NULL;
+uint ifindex = 0;
 
 static void usage(void)
 {
-    fprintf(stderr, "phantap-learn <options>\n");
-    fprintf(stderr, "  -b <exec_block_net>\tthe command to run to block network traffic\n");
-    fprintf(stderr, "  -c <exec_conf_net>\tthe command to run on network conf changes\n");
-    fprintf(stderr, "  -i <listen-interface>\tthe interface to listen on\n");
-    fprintf(stderr, "  -v <debug-level>\tprint some debug info (level > 0)\n");
-    fprintf(stderr, "\nTo show/flush neigh/route\n"
+    fprintf(stderr, "phantap-learn <options>\n"
+                    "  -b <exec_block_net>\tthe command to run to block network traffic\n"
+                    "  -c <exec_conf_net>\tthe command to run on network conf changes\n"
+                    "  -i <listen-interface>\tthe interface to listen on\n"
+                    "  -v <debug-level>\tprint some debug info (level > 0)\n"
+                    "\nTo show/flush neigh/route:\n"
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+                    "ip neigh show proto " str(PHANTAP_RTPROTO) "\n"
+                    "ip neigh flush nud permanent proto " str(PHANTAP_RTPROTO) "\n"
+#else
                     "ip neigh show nud permanent\n"
                     "ip neigh flush nud permanent\n"
-                    "ip route show proto " PHANTAP_RTPROTO "\n"
-                    "ip route flush proto " PHANTAP_RTPROTO "\n");
+#endif
+                    "ip route show proto " str(PHANTAP_RTPROTO) "\n"
+                    "ip route flush proto " str(PHANTAP_RTPROTO) "\n");
 }
 
 static void handle_neighbour(const struct ether_addr *mac, const struct in_addr *ip, bool arp)
@@ -111,20 +121,12 @@ static void handle_neighbour(const struct ether_addr *mac, const struct in_addr 
         return;
     }
 
-    char sbuf[200];
     DEBUG(2, "MAC: %s / IP: %s\n", ether_ntoa(mac), inet_ntoa(*ip));
-    snprintf(sbuf, ARRAY_SIZE(sbuf),
-             "ip neigh replace %s dev %s lladdr %s", inet_ntoa(*ip), interface, ether_ntoa(mac));
-    DEBUG(3, "Executing '%s' ...\n", sbuf);
-    if (system(sbuf))
-        ERROR("Executing '%s' failed!!\n", sbuf);
-    // should we add "scope link" ? "onlink" ?
-    snprintf(sbuf, ARRAY_SIZE(sbuf),
-             "ip route replace %s dev %s proto " PHANTAP_RTPROTO,
-             inet_ntoa(*ip), interface);
-    DEBUG(3, "Executing '%s' ...\n", sbuf);
-    if (system(sbuf))
-        ERROR("Executing '%s' failed!!\n", sbuf);
+    if(update_neighbour4(nl_sock, mac, ip, ifindex) < 0)
+        ERROR("update_neighbour4 MAC: %s / IP: %s failed !!!\n\n", ether_ntoa(mac), inet_ntoa(*ip));
+
+    if(update_route4(nl_sock, ip, ifindex) < 0)
+        ERROR("update_route4 IP: %s failed !!!\n\n", inet_ntoa(*ip));
 }
 
 // response from a service extremely unlikely to run on the victim
@@ -425,7 +427,7 @@ int main(int argc, char **argv)
             exec_conf_net = optarg;
             break;
         case 'i':
-            interface = optarg;
+            ifname = optarg;
             break;
         case 'v':
             debug = atoi(optarg);
@@ -447,14 +449,26 @@ int main(int argc, char **argv)
         goto exit_err;
     }
 
-    if (interface == NULL)
+    if (ifname == NULL)
     {
         ERROR("interface (-i) is mandatory !!!\n\n");
         usage();
         goto exit_err;
     }
 
-    if ((pcap_handle = pcap_create(interface, errbuf)) == NULL)
+    if((nl_sock = create_nl_sock()) == NULL)
+    {
+        ERROR("create_nl_sock failed !!!\n\n");
+        goto exit_err;
+    }
+
+    if((ifindex = if_nametoindex(ifname)) == 0)
+    {
+        ERROR("if_nametoindex failed: %s\n\n", strerror(errno));
+        goto exit_err;
+    }
+
+    if ((pcap_handle = pcap_create(ifname, errbuf)) == NULL)
     {
         ERROR("pcap_create failed: %s\n\n", errbuf);
         goto exit_err;
