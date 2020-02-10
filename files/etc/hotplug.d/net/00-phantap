@@ -2,9 +2,10 @@
 BRIDGE=br-phantap
 
 if [ "$ACTION" = add -a "$DEVICENAME" == "$BRIDGE" ]; then
+    echo "phantap: Configuring bridge $BRIDGE (hotplug)..." > /dev/kmsg
     echo 1 > /sys/class/net/$BRIDGE/bridge/disable_eap_hack
     echo 65528 > /sys/class/net/$BRIDGE/bridge/group_fwd_mask
     ip link set dev $BRIDGE arp off multicast off allmulticast off
-    logger -t phantap "Bridge $BRIDGE configured (hotplug)"
+    echo "phantap: Bridge $BRIDGE configured (hotplug)" > /dev/kmsg
 fi
 

@@ -1,20 +1,16 @@
 #!/bin/sh /etc/rc.common
 
-START=01
+START=90
 USE_PROCD=1
 EXTRA_COMMANDS="setup block_net conf_net"
 
 boot()
 {
     grep -q 'pi_preinit_no_failsafe="y"' /lib/preinit/00_preinit.conf || (
-       logger phantap "OpenWrt failsafe is on, the device will leak it's MAC address during early boot"
-       logger phantap "See https://github.com/nccgroup/phantap/blob/master/README.md#limitations-or-how-it-can-be-detected-"
+       echo "OpenWrt failsafe is on, the device will leak it's MAC address during early boot"
+       echo "See https://github.com/nccgroup/phantap/blob/master/README.md#limitations-or-how-it-can-be-detected-"
     )
     uci get network.phantap &>/dev/null || setup
-    # prevent leaks
-    ebtables -t filter -N phantap-drop -P RETURN
-    ebtables -t filter -A phantap-drop -j DROP
-    ebtables -t filter -A OUTPUT --logical-out br-phantap -j phantap-drop
 }
 
 start_service()
@@ -68,7 +64,8 @@ set $np.dns=''
 set $np.ifname=''
 set $np.ipv6='0'
 EOF
-echo "Get the interface names from the device"
+echo "To finish phantap configuration, start by setting up wifi,"
+echo "then get the interface names from the device"
 echo "uci show network | grep ifname"
 echo "If the interfaces are part of an interface already, remove them (assuming we are using a GL-AR150)"
 echo "uci delete network.lan.ifname"

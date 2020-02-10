@@ -1,0 +1,11 @@
+#!/bin/sh /etc/rc.common
+
+START=01
+
+boot()
+{
+    ebtables -t filter -N phantap-drop -P RETURN \
+    && ebtables -t filter -A phantap-drop -j DROP \
+    && ebtables -t filter -A OUTPUT --logical-out br-phantap -j phantap-drop \
+    && echo "phantap: Anti-leak rules installed" > /dev/kmsg
+}
