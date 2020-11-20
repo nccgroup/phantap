@@ -105,7 +105,9 @@ uci commit
 }
 
 _config_dns() {
-    echo "nameserver $P_DNS" > /tmp/resolv.conf.auto
+    resolvfile=$(uci -q get dhcp.@dnsmasq[0].resolvfile)
+    [ -z "$resolvfile" ] && { echo "Resolvfile not set"; exit; }
+    echo "nameserver $P_DNS" > "$resolvfile"
     /etc/init.d/dnsmasq reload
 }
 
