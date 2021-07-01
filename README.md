@@ -6,7 +6,7 @@ PhanTap is an ‘invisible’ network tap aimed at red teams. With limited physi
 PhanTap will analyze traffic on the network and mask its traffic as the victim device.
 It can mount a tunnel back to a remote server, giving the user a foothold in the network for further analysis and pivoting.
 PhanTap is an OpenWrt package and should be compatible with any device. The physical device used for our testing is currently a small, inexpensive router, the [GL.iNet GL-AR150](https://www.gl-inet.com/products/gl-ar150/).
-You can find a detailed blogpost describing PhanTap [here](https://www.nccgroup.trust/us/our-research/phantap/?research=Public+tools)
+You can find a detailed blogpost describing PhanTap [here](https://research.nccgroup.com/2019/09/30/phantap-phantom-tap-making-networks-spookier-one-packet-at-a-time/)
 
 ## Features:
 
