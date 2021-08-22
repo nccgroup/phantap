@@ -52,27 +52,32 @@ setup() {
 uci set system.ntp.enabled=0
 uci set system.ntp.server=''
 
-np=network.phantap
+nip=network.phantap
+ndp=network.br_phantap
 uci batch <<EOF
-set $np=interface
-set $np.type='bridge'
-set $np.proto='static'
-set $np.ipaddr='169.254.66.100'
-set $np.netmask='255.255.255.254'
-set $np.gateway='169.254.66.101'
-set $np.dns=''
-set $np.ifname=''
-set $np.ipv6='0'
+set $nip=interface
+set $nip.device='br-phantap'
+set $nip.proto='static'
+set $nip.ipaddr='169.254.66.100'
+set $nip.netmask='255.255.255.254'
+set $nip.gateway='169.254.66.101'
+set $nip.dns=''
+set $nip.ipv6='0'
+set $ndp=device
+set $ndp.type='bridge'
+set $ndp.name='br-phantap'
+set $ndp.ipv6='0'
 EOF
 echo "To finish phantap configuration, start by setting up wifi,"
 echo "then get the interface names from the device"
-echo "uci show network | grep ifname"
+echo "uci show network | grep -E 'device=|ports='"
 echo "If the interfaces are part of an interface already, remove them (assuming we are using a GL-AR150)"
-echo "uci delete network.lan.ifname"
-echo "uci delete network.wan.ifname"
-echo "uci delete network.wan6.ifname"
+echo "uci delete network.@device[0].ports"
+echo "uci delete network.wan.device"
+echo "uci delete network.wan6.device"
 echo "Add the interfaces to the phantap bridge and restart the network service (assuming we are using a GL-AR150)"
-echo "uci set network.phantap.ifname='eth0 eth1'"
+echo "uci add_list network.br_phantap.ports='eth0'"
+echo "uci add_list network.br_phantap.ports='eth1'"
 echo "uci commit network"
 echo "/etc/init.d/network reload"
 
