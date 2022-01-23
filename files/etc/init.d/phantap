@@ -26,7 +26,17 @@ start_service()
 
 block_net() {
     # block local output on br-phantap
-    ebtables -t filter -A phantap-drop -j DROP
+    nft -f- <<EOI
+table bridge phantap
+flush table bridge phantap
+table bridge phantap {
+  chain output {
+    type filter hook output priority 100; policy accept;
+    meta obrname br-phantap drop \
+      comment "block output until we detect a victim"
+  }
+}
+EOI
 }
 
 conf_net() {
@@ -91,13 +101,6 @@ set $fp.forward='ACCEPT'
 set $fp.network='phantap'
 EOF
 
-fp=firewall.phantapi
-uci batch <<EOF
-set $fp=include
-set $fp.path='/tmp/phantap.firewall'
-set $fp.reload=1
-EOF
-
 dp=dhcp.phantap
 uci batch <<EOF
 set $dp=dhcp
@@ -123,53 +126,59 @@ P_INTF=phantap
 network_get_device P_BRIDGE $P_INTF
 [ -z "$P_BRIDGE" ] && { echo "Bridge not ready"; exit; }
 P_BR_MAC=$(cat /sys/class/net/$P_BRIDGE/address)
-network_get_ipaddr P_BR_IP $P_INTF
 network_get_gateway P_GW_FAKEIP $P_INTF true
 
-# Integrate with OpenWRT firewall
-cat > /tmp/phantap.firewall.$$ <<EOF
-# block local output on br-phantap
-ebtables -t filter -A phantap-drop -j DROP
-
-ebtables -t nat -N phantap-snat -P RETURN 2>/dev/null \
-&& ebtables -t nat -I POSTROUTING -j phantap-snat
-iptables -t nat -N phantap-snat 2>/dev/null
-iptables -t nat -C POSTROUTING -o br-phantap -j phantap-snat \
-|| iptables -t nat -I POSTROUTING -o br-phantap -j phantap-snat
-
-# Cleanup old rules if exist
-ebtables -t nat -F phantap-snat
-iptables -t nat -F phantap-snat
+nft -f- <<EOF
+table bridge phantap
+flush table bridge phantap
+table bridge phantap {
+  chain pre {
+    type filter hook prerouting priority -200; policy accept;
+    meta ibrname $P_BRIDGE ct mark and 0x1 == 0x1 meta pkttype set unicast ether daddr set $P_BR_MAC \
+      comment "Intercept response traffic"
+  }
+  chain output {
+    type filter hook output priority 100; policy accept;
 $(if [ "$P_GATEWAY_IP" != "0.0.0.0" ]; then
 cat <<EOS
-# We have detected the gateway ip, impersonate the gateway when talking to the victim
-ebtables -t nat -A phantap-snat -s $P_BR_MAC -d $P_VICTIM_MAC --logical-out $P_BRIDGE -j snat --to-source $P_GATEWAY_MAC
-iptables -t nat -A phantap-snat -s $P_BR_IP -d $P_VICTIM_IP -j SNAT --to-source $P_GATEWAY_IP
+    meta obrname $P_BRIDGE ether daddr $P_VICTIM_MAC ether saddr set $P_GATEWAY_MAC return \
+      comment "Use gateway MAC to talk to the victim"
 EOS
 else
 cat <<EOS
-# We have not detected the gateway ip, drop all traffic from phantap to the victim
-ebtables -t nat -A phantap-snat -s $P_BR_MAC -d $P_VICTIM_MAC --logical-out $P_BRIDGE -j DROP
+    meta obrname $P_BRIDGE ether daddr $P_VICTIM_MAC drop \
+      comment "Do not talk to the victim as we don't know the gateway IP"
 EOS
 fi
 )
-# Replace our local mac with the victim mac
-ebtables -t nat -A phantap-snat -s $P_BR_MAC --logical-out $P_BRIDGE -j snat --to-source $P_VICTIM_MAC
-# Replace our local ip with the victim ip
-iptables -t nat -A phantap-snat -s $P_BR_IP -j SNAT --to-source $P_VICTIM_IP
+    meta obrname $P_BRIDGE ether saddr set $P_VICTIM_MAC return \
+      comment "Use victim MAC"
+  }
+}
+table ip phantap
+flush table ip phantap
+table ip phantap {
+  chain postnat {
+    type nat hook postrouting priority 100; policy accept;
+    oifname $P_BRIDGE ct mark set ct mark or 0x1 \
+      comment "Mark our traffic so we can intercept response traffic"
+$(if [ "$P_GATEWAY_IP" != "0.0.0.0" ]; then
+cat <<EOS
+    oifname $P_BRIDGE ip daddr $P_VICTIM_IP snat ip to $P_GATEWAY_IP \
+      comment "Use gateway IP to talk to the victim"
+EOS
+fi
+)
+    oifname $P_BRIDGE snat ip to $P_VICTIM_IP \
+      comment "Use victim IP"
+  }
+}
+EOF
 
 # Add mac for the fake gateway
 ip neigh replace $P_GW_FAKEIP lladdr $P_GATEWAY_MAC dev $P_BRIDGE
 
-# allow local output on br-phantap again, we now have internet access
-ebtables -t filter -F phantap-drop
-
-echo "PhanTap firewall rules reloaded, you now have internet"
-EOF
-mv /tmp/phantap.firewall.$$ /tmp/phantap.firewall
-
-ebtables -t filter -A phantap-drop -j DROP
-/etc/init.d/firewall reload
+echo "PhanTap firewall rules applied, you now have internet"
 }
 
 _handle_onconfig() {
