@@ -2,7 +2,7 @@
 
 START=90
 USE_PROCD=1
-EXTRA_COMMANDS="setup block_net conf_net"
+EXTRA_COMMANDS="setup block_net conf_net fwd_all"
 
 boot()
 {
@@ -37,6 +37,37 @@ table bridge phantap {
   }
 }
 EOI
+}
+
+fwd_all() {
+    # Setting group_fwd_mask to 65528, Linux bridge doesn't forward 01:80:C2:00:00:0{0,1,2}
+    # except if STP is disabled on the bridge then 01:80:C2:00:00:00 is forwarded
+    # https://github.com/torvalds/linux/blob/fbb3abdf2223cd0dfc07de85fe5a43ba7f435bdf/net/bridge/br_input.c#L343-L346
+    # Try to forward 01:80:C2:00:00:0{1,2} to all the other interfaces using 'dup',
+    # even if pause frame will likely be filtered by the NIC
+    INTFS="$(uci get network.br_phantap.ports)"
+    nft -f- <<EOF1
+table netdev phantap
+flush table netdev phantap
+table netdev phantap {
+$(for INTF1 in $INTFS; do
+cat <<EOF2
+  chain $INTF1 {
+    type filter hook ingress device $INTF1 priority 0; policy accept;
+EOF2
+for INTF2 in $INTFS; do
+    [ $INTF1 == $INTF2 ] && continue
+cat <<EOF3
+    ether daddr 01:80:C2:00:00:01-01:80:C2:00:00:02 dup to $INTF2
+EOF3
+done
+cat <<EOF2
+  }
+EOF2
+done
+)
+}
+EOF1
 }
 
 conf_net() {

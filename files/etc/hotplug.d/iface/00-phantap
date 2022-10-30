@@ -3,6 +3,7 @@ BRIDGE=br-phantap
 
 if [ "$ACTION" = ifup -a "$DEVICE" == "$BRIDGE" ]; then
     echo "phantap: Starting (hotplug)..." > /dev/kmsg
+    /etc/init.d/phantap fwd_all
     /etc/init.d/phantap start
 fi
 
